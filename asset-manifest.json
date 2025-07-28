@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/LdeGroen/ctfcrm/static/css/main.e6c13ad2.css",
+    "main.js": "/LdeGroen/ctfcrm/static/js/main.5dc49df1.js",
+    "static/js/453.ebed63c5.chunk.js": "/LdeGroen/ctfcrm/static/js/453.ebed63c5.chunk.js",
+    "index.html": "/LdeGroen/ctfcrm/index.html",
+    "main.e6c13ad2.css.map": "/LdeGroen/ctfcrm/static/css/main.e6c13ad2.css.map",
+    "main.5dc49df1.js.map": "/LdeGroen/ctfcrm/static/js/main.5dc49df1.js.map",
+    "453.ebed63c5.chunk.js.map": "/LdeGroen/ctfcrm/static/js/453.ebed63c5.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.5dc49df1.js"
+  ]
+}
