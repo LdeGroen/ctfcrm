@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Client, Account, Databases, ID, Query } from 'https://esm.sh/appwrite@14.0.1';
 
 
@@ -12,8 +12,6 @@ const APPWRITE_COLLECTION_PERFORMANCES_ID = '68873b6500074288e73d'; // Vervang d
 const APPWRITE_COLLECTION_LOCATIONS_ID = '68878ee7000cb07ef9e7'; // Vervang dit
 const APPWRITE_COLLECTION_EXECUTIONS_ID = '68878f2d0020be3a7efd'; // Vervang dit
 const APPWRITE_COLLECTION_EVENTS_ID = '688798900022cbda4ec0'; // Vervang dit
-// Settings collectie is niet meer nodig voor de contract generator
-// const APPWRITE_COLLECTION_SETTINGS_ID = '6888811300080673fa2c'; 
 
 // --- Initialiseer Appwrite Client ---
 const client = new Client();
@@ -43,6 +41,9 @@ const icons = {
   pdf: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
   copy: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
   check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+  filter: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>,
+  chevronUp: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
+  chevronDown: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
 };
 
 // --- Helper: Functie om speciale tekens te escapen voor RegExp ---
@@ -72,13 +73,12 @@ const fetchAllDocuments = async (collectionId) => {
         return documents;
     } catch (e) {
         console.error(`Fout bij ophalen van alle documenten voor ${collectionId}:`, e);
-        // Fallback: probeer tenminste de eerste 500 te laden bij een fout
         try {
             const response = await databases.listDocuments(APPWRITE_DATABASE_ID, collectionId, [Query.limit(500)]);
             return response.documents;
         } catch (fallbackError) {
             console.error(`Fallback voor ${collectionId} ook mislukt:`, fallbackError);
-            return []; // Geef een lege array terug als alles mislukt
+            return [];
         }
     }
 };
@@ -171,8 +171,6 @@ function CrmApp({ user, onLogout }) {
   const [locations, setLocations] = useState([]);
   const [executions, setExecutions] = useState([]);
   const [events, setEvents] = useState([]);
-  // Settings state is no longer needed
-  // const [settings, setSettings] = useState([]);
 
   const [loadingData, setLoadingData] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -201,8 +199,6 @@ function CrmApp({ user, onLogout }) {
       locations: { id: APPWRITE_COLLECTION_LOCATIONS_ID, setter: setLocations },
       executions: { id: APPWRITE_COLLECTION_EXECUTIONS_ID, setter: setExecutions },
       events: { id: APPWRITE_COLLECTION_EVENTS_ID, setter: setEvents },
-      // Settings collection is no longer fetched
-      // settings: { id: APPWRITE_COLLECTION_SETTINGS_ID, setter: setSettings },
     };
 
     const fetchInitialData = async () => {
@@ -271,6 +267,18 @@ function CrmApp({ user, onLogout }) {
       showNotification(`Bijwerken mislukt: ${e.message}`, 'error');
     }
   };
+  
+  const handleBulkUpdateItems = async (collectionId, ids, data) => {
+    try {
+        await Promise.all(ids.map(id => 
+            databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, data)
+        ));
+        showNotification(`${ids.length} items succesvol bijgewerkt!`);
+    } catch (e) {
+        console.error("Fout bij bulk bijwerken:", e);
+        showNotification(`Bulk bijwerken mislukt: ${e.message}`, 'error');
+    }
+  };
 
   const handleDeleteItem = (collectionId, id) => {
      showConfirm("Weet je zeker dat je dit item wilt verwijderen?", async () => {
@@ -304,19 +312,17 @@ function CrmApp({ user, onLogout }) {
 
   return (
     <div className="flex h-screen bg-gray-50" style={{fontFamily: 'Inter, sans-serif'}}>
-      {/* Static Sidebar for Desktop */}
       <div className="hidden md:flex md:flex-shrink-0">
           <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} onLogout={onLogout} />
       </div>
 
-      {/* Mobile Nav Overlay */}
       {isMobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-50 animate-fade-in">
            <Sidebar 
               activeView={activeView} 
               setActiveView={(view) => {
                   setActiveView(view);
-                  setIsMobileNavOpen(false); // Close nav on selection
+                  setIsMobileNavOpen(false);
               }} 
               user={user} 
               onLogout={onLogout} 
@@ -327,7 +333,6 @@ function CrmApp({ user, onLogout }) {
       )}
       
       <div className="flex-1 flex flex-col w-full overflow-hidden">
-        {/* Mobile Header */}
         <header className="md:hidden flex justify-between items-center p-4 bg-white border-b border-gray-200">
            <div className="flex items-center space-x-3">
              <img src="https://cafetheaterfestival.nl/wp-content/uploads/2025/06/fav.png" alt="CTF Logo" className="w-8 h-8" />
@@ -349,6 +354,7 @@ function CrmApp({ user, onLogout }) {
               contacts={contacts} 
               onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_CONTACTS_ID, data)}
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_CONTACTS_ID, id, data)}
+              onBulkUpdate={(ids, data) => handleBulkUpdateItems(APPWRITE_COLLECTION_CONTACTS_ID, ids, data)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_CONTACTS_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_CONTACTS_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_CONTACTS_ID, ids)}
@@ -581,7 +587,7 @@ function GenericImportModal({ onClose, onImport, requiredColumns, title }) {
         if (rows.length < 2) return [];
         const headers = rows.shift().split(',').map(h => h.trim());
         const data = rows.map(row => {
-            const values = row.split(','); // Let op: dit is een simpele parser. Werkt niet met komma's in waarden.
+            const values = row.split(',');
             return headers.reduce((obj, header, index) => {
                 obj[header] = values[index] ? values[index].trim() : '';
                 return obj;
@@ -676,15 +682,87 @@ function GenericImportModal({ onClose, onImport, requiredColumns, title }) {
 
 // --- Views ---
 
-function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function FilterPopover({ column, data, activeFilters, onFilterChange }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const popoverRef = useRef(null);
+    const buttonRef = useRef(null);
+
+    const uniqueValues = useMemo(() => {
+        const values = new Set(data.map(item => item[column.key]));
+        return Array.from(values).filter(Boolean).sort();
+    }, [data, column.key]);
+
+    const currentFilters = activeFilters[column.key] || new Set();
+
+    const handleToggle = (value) => {
+        const newFilters = new Set(currentFilters);
+        if (newFilters.has(value)) {
+            newFilters.delete(value);
+        } else {
+            newFilters.add(value);
+        }
+        onFilterChange(column.key, newFilters);
+    };
+    
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target) && buttonRef.current && !buttonRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    if (uniqueValues.length === 0) return null;
+
+    return (
+        <div className="relative inline-block">
+            <button
+                ref={buttonRef}
+                onClick={() => setIsOpen(!isOpen)}
+                className={`p-1 rounded-full ${currentFilters.size > 0 ? 'bg-indigo-200 text-indigo-800' : 'text-gray-400 hover:bg-gray-200'}`}
+            >
+                <div className="w-4 h-4">{icons.filter}</div>
+            </button>
+            {isOpen && (
+                <div ref={popoverRef} className="absolute z-20 mt-2 w-56 -right-1/2 bg-white rounded-md shadow-lg border">
+                    <div className="p-2 text-sm font-semibold text-gray-700 border-b">Filter op {column.label}</div>
+                    <div className="max-h-60 overflow-y-auto p-2">
+                        {uniqueValues.map(value => (
+                            <label key={value} className="flex items-center space-x-2 p-1 rounded hover:bg-gray-100">
+                                <input
+                                    type="checkbox"
+                                    checked={currentFilters.has(value)}
+                                    onChange={() => handleToggle(value)}
+                                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                                />
+                                <span className="text-sm text-gray-800">{String(value)}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <div className="p-2 border-t flex justify-end">
+                        <button onClick={() => onFilterChange(column.key, new Set())} className="text-xs text-indigo-600 hover:underline">Reset</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBulkAdd, onBulkDelete }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [sortConfig, setSortConfig] = useState({ key: 'Name', direction: 'ascending' });
+  const [columnFilters, setColumnFilters] = useState({});
 
   const standardizeRole = (role) => (role || '').trim().toLowerCase();
+  const definedRoles = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
 
   const roles = useMemo(() => {
     const roleCounts = contacts.reduce((acc, c) => {
@@ -694,22 +772,46 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
         }
         return acc;
     }, {});
+    
+    definedRoles.forEach(role => {
+        if (!roleCounts[role]) roleCounts[role] = 0;
+    });
+
     return Object.entries(roleCounts).map(([name, count]) => ({ name, count })).sort((a,b) => a.name.localeCompare(b.name));
   }, [contacts]);
   
   const filteredContacts = useMemo(() => {
-      return contacts
+      let filtered = contacts
         .filter(c => roleFilter === 'all' || standardizeRole(c.Role) === roleFilter)
         .filter(c => 
             c.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (c.Email && c.Email.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-        .sort((a, b) => a.Name.localeCompare(b.Name));
-  }, [contacts, roleFilter, searchTerm]);
+        );
+
+      // Apply column filters
+      Object.entries(columnFilters).forEach(([key, filterValues]) => {
+          if (filterValues.size > 0) {
+              filtered = filtered.filter(contact => filterValues.has(contact[key]));
+          }
+      });
+      
+      // Apply sorting
+      if (sortConfig.key) {
+        filtered.sort((a, b) => {
+            const aValue = a[sortConfig.key];
+            const bValue = b[sortConfig.key];
+            if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+            return 0;
+        });
+      }
+
+      return filtered;
+  }, [contacts, roleFilter, searchTerm, sortConfig, columnFilters]);
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [roleFilter, searchTerm]);
+  }, [roleFilter, searchTerm, sortConfig, columnFilters]);
 
   const handleEdit = (contact) => {
     setEditingContact(contact);
@@ -722,21 +824,14 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
   };
   
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-        const allIds = new Set(filteredContacts.map(c => c.id));
-        setSelectedIds(allIds);
-    } else {
-        setSelectedIds(new Set());
-    }
+    if (e.target.checked) setSelectedIds(new Set(filteredContacts.map(c => c.id)));
+    else setSelectedIds(new Set());
   };
 
   const handleSelectOne = (e, id) => {
     const newSelectedIds = new Set(selectedIds);
-    if (e.target.checked) {
-        newSelectedIds.add(id);
-    } else {
-        newSelectedIds.delete(id);
-    }
+    if (e.target.checked) newSelectedIds.add(id);
+    else newSelectedIds.delete(id);
     setSelectedIds(newSelectedIds);
   };
 
@@ -746,9 +841,62 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
       setSelectedIds(new Set());
     }
   };
+  
+  const handleBulkEdit = () => {
+    if (selectedIds.size > 0) setIsBulkEditModalOpen(true);
+  };
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+        direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const handleColumnFilterChange = (key, values) => {
+    setColumnFilters(prev => ({ ...prev, [key]: values }));
+  };
 
   const isAllSelected = filteredContacts.length > 0 && selectedIds.size === filteredContacts.length;
   const countText = `Toont ${filteredContacts.length} van ${contacts.length} contacten`;
+  
+  const getTableHeaders = () => {
+    const baseHeaders = [
+        { key: 'Name', label: 'Naam', filterable: true },
+        { key: 'Role', label: 'Rol', filterable: true },
+        { key: 'Email', label: 'Email', filterable: false },
+        { key: 'Phone', label: 'Telefoon', filterable: false },
+    ];
+    if (roleFilter === 'all') return baseHeaders;
+    
+    switch (roleFilter) {
+        case 'artiest': return [...baseHeaders, { key: 'pronouns', label: 'Voornaamwoorden', filterable: true }, { key: 'education', label: 'Opleiding', filterable: true }, { key: 'graduationYear', label: 'Afstudeerjaar', filterable: true }];
+        case 'vrijwilliger': return [...baseHeaders, { key: 'shirtSize', label: 'Shirtmaat', filterable: true }, { key: 'previouslyVolunteer', label: 'Eerder vrijwilliger?', filterable: true }];
+        case 'fotograaf': return [...baseHeaders, { key: 'shirtSize', label: 'Shirtmaat', filterable: true }, { key: 'previouslyPhotographer', label: 'Eerder fotograaf?', filterable: true }];
+        case 'teamlid': return [...baseHeaders, { key: 'privateEmail', label: 'Privé Email', filterable: false }];
+        default: return baseHeaders;
+    }
+  };
+  
+  const renderTableRow = (contact) => {
+    const baseCells = [
+        <td key="name" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Name}</span><CopyToClipboardButton textToCopy={contact.Name} /></div></td>,
+        <td key="role" className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>,
+        <td key="email" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Email}</span>{contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}</div></td>,
+        <td key="phone" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Phone}</span>{contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}</div></td>
+    ];
+
+    if (roleFilter === 'all') return baseCells;
+
+    switch (roleFilter) {
+        case 'artiest': return [...baseCells, <td key="pronouns" className="px-6 py-4 whitespace-nowrap">{contact.pronouns}</td>, <td key="education" className="px-6 py-4 whitespace-nowrap">{contact.education}</td>, <td key="gradYear" className="px-6 py-4 whitespace-nowrap">{contact.graduationYear}</td>];
+        case 'vrijwilliger': return [...baseCells, <td key="shirt" className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>, <td key="prevVol" className="px-6 py-4 whitespace-nowrap">{contact.previouslyVolunteer ? 'Ja' : 'Nee'}</td>];
+        case 'fotograaf': return [...baseCells, <td key="shirt" className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>, <td key="prevPho" className="px-6 py-4 whitespace-nowrap">{contact.previouslyPhotographer ? 'Ja' : 'Nee'}</td>];
+        case 'teamlid': return [...baseCells, <td key="privEmail" className="px-6 py-4 whitespace-nowrap">{contact.privateEmail}</td>];
+        default: return baseCells;
+    }
+  };
 
   return (
     <div>
@@ -771,9 +919,14 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
       {selectedIds.size > 0 && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                {icons.trash} <span>Verwijderen</span>
-            </button>
+            <div className="flex space-x-2">
+                <button onClick={handleBulkEdit} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center space-x-1">
+                    {icons.edit} <span>Bewerk Selectie</span>
+                </button>
+                <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                    {icons.trash} <span>Verwijderen</span>
+                </button>
+            </div>
         </div>
       )}
 
@@ -788,10 +941,21 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
                   disabled={filteredContacts.length === 0}
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefoon</th>
+              {getTableHeaders().map(header => (
+                <th key={header.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center space-x-2">
+                        <button onClick={() => requestSort(header.key)} className="flex items-center">
+                            <span>{header.label}</span>
+                            {sortConfig.key === header.key && (
+                                <span className="ml-1 w-4 h-4">{sortConfig.direction === 'ascending' ? icons.chevronUp : icons.chevronDown}</span>
+                            )}
+                        </button>
+                        {header.filterable && (
+                            <FilterPopover column={header} data={contacts} activeFilters={columnFilters} onFilterChange={handleColumnFilterChange} />
+                        )}
+                    </div>
+                </th>
+              ))}
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
             </tr>
           </thead>
@@ -804,32 +968,14 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
                     onChange={(e) => handleSelectOne(e, contact.id)}
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center justify-between group">
-                        <span>{contact.Name}</span>
-                        <CopyToClipboardButton textToCopy={contact.Name} />
-                    </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                   <div className="flex items-center justify-between group">
-                        <span>{contact.Email}</span>
-                        {contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}
-                    </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center justify-between group">
-                        <span>{contact.Phone}</span>
-                        {contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}
-                    </div>
-                </td>
+                {renderTableRow(contact)}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
                   <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="6" className="text-center py-4">Geen contacten gevonden.</td></tr>
+              <tr><td colSpan={getTableHeaders().length + 2} className="text-center py-4">Geen contacten gevonden.</td></tr>
             )}
           </tbody>
         </table>
@@ -849,10 +995,20 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
           }}
         />
       )}
+      {isBulkEditModalOpen && (
+        <BulkEditContactsModal
+            onClose={() => setIsBulkEditModalOpen(false)}
+            onSave={(data) => {
+                onBulkUpdate(Array.from(selectedIds), data);
+                setIsBulkEditModalOpen(false);
+                setSelectedIds(new Set());
+            }}
+        />
+      )}
       {isImportModalOpen && (
         <GenericImportModal
             title="Contacten"
-            requiredColumns={['Name', 'Role', 'Email', 'Phone', 'Adress', 'Notes']}
+            requiredColumns={['Name', 'Role']}
             onClose={() => setIsImportModalOpen(false)}
             onImport={(data) => onBulkAdd(data.map(item => ({
                 Name: item.Name || '',
@@ -861,6 +1017,13 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
                 Phone: item.Phone || '',
                 Adress: item.Adress || '',
                 Notes: item.Notes || '',
+                pronouns: item.pronouns || '',
+                education: item.education || '',
+                graduationYear: item.graduationYear ? parseInt(item.graduationYear, 10) : null,
+                shirtSize: item.shirtSize || '',
+                previouslyVolunteer: item.previouslyVolunteer === 'true' || item.previouslyVolunteer === true,
+                previouslyPhotographer: item.previouslyPhotographer === 'true' || item.previouslyPhotographer === true,
+                privateEmail: item.privateEmail || '',
             })))}
         />
       )}
@@ -869,33 +1032,49 @@ function ContactsView({ contacts, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDe
 }
 
 function ContactForm({ contact, onClose, onSave }) {
-  const [formData, setFormData] = useState({
+  const initialData = {
     name: contact?.Name || '',
     role: contact?.Role || 'artiest',
     email: contact?.Email || '',
     phone: contact?.Phone || '',
     address: contact?.Adress || '',
     notes: contact?.Notes || '',
-  });
+    pronouns: contact?.pronouns || '',
+    education: contact?.education || '',
+    graduationYear: contact?.graduationYear || '',
+    shirtSize: contact?.shirtSize || '',
+    previouslyVolunteer: contact?.previouslyVolunteer || false,
+    previouslyPhotographer: contact?.previouslyPhotographer || false,
+    privateEmail: contact?.privateEmail || '',
+  };
+  const [formData, setFormData] = useState(initialData);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const standardizedRole = formData.role.trim().toLowerCase();
     const dataForAppwrite = {
         Name: formData.name,
-        Role: standardizedRole,
+        Role: formData.role,
         Email: formData.email,
         Phone: formData.phone,
         Adress: formData.address,
         Notes: formData.notes,
+        pronouns: formData.role === 'artiest' ? formData.pronouns : null,
+        education: formData.role === 'artiest' ? formData.education : null,
+        graduationYear: formData.role === 'artiest' && formData.graduationYear ? parseInt(formData.graduationYear) : null,
+        shirtSize: (formData.role === 'vrijwilliger' || formData.role === 'fotograaf') ? formData.shirtSize : null,
+        previouslyVolunteer: formData.role === 'vrijwilliger' ? formData.previouslyVolunteer : null,
+        previouslyPhotographer: formData.role === 'fotograaf' ? formData.previouslyPhotographer : null,
+        privateEmail: formData.role === 'teamlid' ? formData.privateEmail : null,
     };
     onSave(dataForAppwrite);
   };
+  
+  const roleOptions = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
@@ -906,12 +1085,36 @@ function ContactForm({ contact, onClose, onSave }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Volledige naam" className="w-full p-2 border rounded" required />
-          <input type="text" name="role" value={formData.role} onChange={handleChange} placeholder="Rol (bv. artiest, vrijwilliger)" className="w-full p-2 border rounded" required />
+          <select name="role" value={formData.role} onChange={handleChange} className="w-full p-2 border rounded capitalize">
+            {roleOptions.map(role => <option key={role} value={role} className="capitalize">{role}</option>)}
+          </select>
           <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
           <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Telefoonnummer" className="w-full p-2 border rounded" />
+          
+          {formData.role === 'artiest' && (
+            <>
+                <input type="text" name="pronouns" value={formData.pronouns} onChange={handleChange} placeholder="Gewenste voornaamwoorden" className="w-full p-2 border rounded" />
+                <input type="text" name="education" value={formData.education} onChange={handleChange} placeholder="Opleiding" className="w-full p-2 border rounded" />
+                <input type="number" name="graduationYear" value={formData.graduationYear} onChange={handleChange} placeholder="Afstudeerjaar" className="w-full p-2 border rounded" />
+            </>
+          )}
+          {(formData.role === 'vrijwilliger' || formData.role === 'fotograaf') && (
+            <input type="text" name="shirtSize" value={formData.shirtSize} onChange={handleChange} placeholder="Shirtmaat" className="w-full p-2 border rounded" />
+          )}
+          {formData.role === 'vrijwilliger' && (
+            <label className="flex items-center space-x-2"><input type="checkbox" name="previouslyVolunteer" checked={formData.previouslyVolunteer} onChange={handleChange} /><span>Eerder vrijwilliger geweest?</span></label>
+          )}
+          {formData.role === 'fotograaf' && (
+            <label className="flex items-center space-x-2"><input type="checkbox" name="previouslyPhotographer" checked={formData.previouslyPhotographer} onChange={handleChange} /><span>Eerder fotograaf geweest?</span></label>
+          )}
+          {formData.role === 'teamlid' && (
+            <input type="email" name="privateEmail" value={formData.privateEmail} onChange={handleChange} placeholder="Privé-email" className="w-full p-2 border rounded" />
+          )}
+
           <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Adres" className="w-full p-2 border rounded" />
           <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Notities" className="w-full p-2 border rounded h-24"></textarea>
-          <div className="flex justify-end space-x-4">
+          
+          <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Opslaan</button>
           </div>
@@ -921,6 +1124,121 @@ function ContactForm({ contact, onClose, onSave }) {
   );
 }
 
+function BulkEditContactsModal({ onClose, onSave }) {
+    const [updateData, setUpdateData] = useState({});
+    const [fieldsToUpdate, setFieldsToUpdate] = useState({});
+
+    const roleOptions = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
+
+    const handleFieldChange = (field, value) => {
+        setUpdateData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleCheckboxChange = (field, isChecked) => {
+        setFieldsToUpdate(prev => ({ ...prev, [field]: isChecked }));
+        if (!isChecked) {
+            const newUpdateData = { ...updateData };
+            delete newUpdateData[field];
+            setUpdateData(newUpdateData);
+        }
+    };
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const finalData = {};
+        for (const field in fieldsToUpdate) {
+            if (fieldsToUpdate[field]) {
+                finalData[field] = updateData[field] === undefined ? null : updateData[field];
+            }
+        }
+        if (Object.keys(finalData).length > 0) {
+            onSave(finalData);
+        } else {
+            onClose();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
+                <h3 className="text-2xl font-bold mb-6">Contacten in Bulk Bewerken</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <p className="text-sm text-gray-600">Vink de velden aan die je wilt bijwerken voor alle geselecteerde contacten. Lege velden zullen de bestaande waarde wissen.</p>
+                    
+                    {/* Role */}
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_role" onChange={e => handleCheckboxChange('Role', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_role" className="font-medium">Rol</label>
+                        <select name="Role" onChange={e => handleFieldChange('Role', e.target.value)} disabled={!fieldsToUpdate.Role} className="w-full p-2 border rounded disabled:bg-gray-200 capitalize">
+                            {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
+                        </select>
+                    </div>
+                    
+                    {/* Artist fields */}
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_pronouns" onChange={e => handleCheckboxChange('pronouns', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_pronouns" className="font-medium">Voornaamwoorden</label>
+                        <input type="text" name="pronouns" onChange={e => handleFieldChange('pronouns', e.target.value)} disabled={!fieldsToUpdate.pronouns} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_education" onChange={e => handleCheckboxChange('education', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_education" className="font-medium">Opleiding</label>
+                        <input type="text" name="education" onChange={e => handleFieldChange('education', e.target.value)} disabled={!fieldsToUpdate.education} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_graduationYear" onChange={e => handleCheckboxChange('graduationYear', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_graduationYear" className="font-medium">Afstudeerjaar</label>
+                        <input type="number" name="graduationYear" onChange={e => handleFieldChange('graduationYear', parseInt(e.target.value))} disabled={!fieldsToUpdate.graduationYear} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+
+                    {/* Volunteer/Photographer fields */}
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_shirtSize" onChange={e => handleCheckboxChange('shirtSize', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_shirtSize" className="font-medium">Shirtmaat</label>
+                        <input type="text" name="shirtSize" onChange={e => handleFieldChange('shirtSize', e.target.value)} disabled={!fieldsToUpdate.shirtSize} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_previouslyVolunteer" onChange={e => handleCheckboxChange('previouslyVolunteer', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_previouslyVolunteer" className="font-medium">Eerder Vrijwilliger?</label>
+                        <input type="checkbox" name="previouslyVolunteer" onChange={e => handleFieldChange('previouslyVolunteer', e.target.checked)} disabled={!fieldsToUpdate.previouslyVolunteer} className="h-4 w-4" />
+                    </div>
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_previouslyPhotographer" onChange={e => handleCheckboxChange('previouslyPhotographer', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_previouslyPhotographer" className="font-medium">Eerder Fotograaf?</label>
+                        <input type="checkbox" name="previouslyPhotographer" onChange={e => handleFieldChange('previouslyPhotographer', e.target.checked)} disabled={!fieldsToUpdate.previouslyPhotographer} className="h-4 w-4" />
+                    </div>
+
+                    {/* Team member fields */}
+                     <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_privateEmail" onChange={e => handleCheckboxChange('privateEmail', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_privateEmail" className="font-medium">Privé Email</label>
+                        <input type="email" name="privateEmail" onChange={e => handleFieldChange('privateEmail', e.target.value)} disabled={!fieldsToUpdate.privateEmail} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+
+                    {/* Common fields */}
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_address" onChange={e => handleCheckboxChange('Adress', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_address" className="font-medium">Adres</label>
+                        <input type="text" name="Adress" onChange={e => handleFieldChange('Adress', e.target.value)} disabled={!fieldsToUpdate.Adress} className="w-full p-2 border rounded disabled:bg-gray-200" />
+                    </div>
+                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
+                        <input type="checkbox" id="update_notes" onChange={e => handleCheckboxChange('Notes', e.target.checked)} className="h-4 w-4" />
+                        <label htmlFor="update_notes" className="font-medium">Notities</label>
+                        <textarea name="Notes" onChange={e => handleFieldChange('Notes', e.target.value)} disabled={!fieldsToUpdate.Notes} className="w-full p-2 border rounded disabled:bg-gray-200 h-20"></textarea>
+                    </div>
+
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Wijzigingen Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+
+// --- ANDERE VIEWS BLIJVEN HIER (onveranderd) ---
 function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -1108,7 +1426,6 @@ function CompanyForm({ company, onClose, onSave }) {
 }
 
 function ViewCompanyArtistsModal({ artists, companyName, company, onClose }) {
-    // Helper om de rol van een artiest te bepalen
     const getArtistRole = (artistId) => {
         if (company?.playerIds?.includes(artistId)) return <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Speler</span>;
         if (company?.nonPlayerIds?.includes(artistId)) return <span className="text-xs bg-gray-100 text-gray-800 font-medium px-2 py-0.5 rounded-full">Niet-speler</span>;
@@ -1173,17 +1490,17 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
 
     if (role === 'player') {
         if (newPlayerIds.has(artistId)) {
-            newPlayerIds.delete(artistId); // Uncheck
+            newPlayerIds.delete(artistId);
         } else {
-            newPlayerIds.add(artistId); // Check
-            newNonPlayerIds.delete(artistId); // Uncheck non-player if it was checked
+            newPlayerIds.add(artistId);
+            newNonPlayerIds.delete(artistId);
         }
     } else if (role === 'nonPlayer') {
         if (newNonPlayerIds.has(artistId)) {
-            newNonPlayerIds.delete(artistId); // Uncheck
+            newNonPlayerIds.delete(artistId);
         } else {
-            newNonPlayerIds.add(artistId); // Check
-            newPlayerIds.delete(artistId); // Uncheck player if it was checked
+            newNonPlayerIds.add(artistId);
+            newPlayerIds.delete(artistId);
         }
     }
     
@@ -1677,9 +1994,9 @@ function LocationForm({ location, isBulkMode, onClose, onSave, onUpdate, onSaveB
           if (locationsToSave.length > 0) {
               onSaveBulk(locationsToSave);
           }
-      } else if (location) { // Editing
+      } else if (location) {
           onUpdate({ Name: locations[0].name, Address: locations[0].address });
-      } else { // Saving new single
+      } else {
           onSave({ Name: locations[0].name, Address: locations[0].address, ownerIds: [] });
       }
   };
@@ -2012,14 +2329,14 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
   const handleSubmit = (e) => { 
       e.preventDefault();
       
-      if (execution) { // Editing existing one
+      if (execution) {
         const dateTime = new Date(`${datetimes[0].date}T${datetimes[0].time}`);
         onSave({ 
             performanceId, 
             locationId,
             DateTime: dateTime.toISOString()
         });
-      } else { // Creating new ones (bulk)
+      } else {
         const executionsToCreate = datetimes
             .filter(dt => dt.date && dt.time)
             .map(dt => {
@@ -2250,7 +2567,7 @@ function EventForm({ event, onClose, onSave }) {
     e.preventDefault(); 
     onSave({ 
         Name: formData.name, 
-        gage: String(formData.gage), // Verzeker dat het een string is bij het opslaan
+        gage: String(formData.gage),
         executionIds: event?.executionIds || [] 
     }); 
   };
@@ -2373,7 +2690,6 @@ function ManageExecutionsForEventModal({ event, allExecutions, allPerformances, 
     );
 }
 
-// --- VERNIEUWDE BLOKKENSCHEMA FUNCTIE ---
 function ScheduleView({ events, performances, executions, locations, companies }) {
     const [selectedEventId, setSelectedEventId] = useState(events.length > 0 ? events[0].id : '');
     
@@ -2387,7 +2703,7 @@ function ScheduleView({ events, performances, executions, locations, companies }
 
         const eventExecutions = (event.executionIds || [])
             .map(execId => executions.find(e => e.id === execId))
-            .filter(Boolean) // Verwijder 'undefined' als een ID niet gevonden wordt
+            .filter(Boolean)
             .map(e => {
                 const performance = performances.find(p => p.id === e.performanceId);
                 const company = performance ? companies.find(c => c.id === performance.companyId) : null;
@@ -2506,7 +2822,6 @@ function ScheduleView({ events, performances, executions, locations, companies }
                             </h3>
                             <div className="bg-white rounded-lg shadow-md overflow-x-auto">
                                 <div className="grid" style={{ gridTemplateColumns: `150px 1fr` }}>
-                                    {/* Header Row */}
                                     <div className="sticky left-0 bg-gray-100 p-2 font-semibold z-20 border-b border-r border-gray-300">Locatie</div>
                                     <div className="grid" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
                                         {day.timeSlots.map(time => (
@@ -2516,16 +2831,13 @@ function ScheduleView({ events, performances, executions, locations, companies }
                                         ))}
                                     </div>
 
-                                    {/* Data Rows */}
                                     {day.locations.map(location => (
                                         <React.Fragment key={location.id}>
                                             <div className="sticky left-0 bg-white p-2 font-semibold z-10 border-t border-r border-gray-300 flex items-center">{location.Name}</div>
                                             <div className="relative grid border-t border-gray-200" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
-                                                {/* Grid lines */}
                                                 {day.timeSlots.map((_, index) => (
                                                     <div key={index} className="border-l border-gray-200 h-full"></div>
                                                 ))}
-                                                {/* Executions */}
                                                 {location.executions.map(exec => {
                                                     const { startSlotIndex, span } = getExecutionPosition(exec, day.timeSlots);
                                                     return (
@@ -2559,8 +2871,6 @@ function ScheduleView({ events, performances, executions, locations, companies }
         </div>
     );
 }
-
-// --- VERNIEUWDE CONTRACT GENERATOR ---
 
 const contractTemplateNL = `Het Café Theater Festival (CTF), rechtsgeldig vertegenwoordigd door Christiaan Uytdehaage, en [company_name], hierna te noemen ‘gezelschap’, spreken het volgende met elkaar af:
 
@@ -2624,7 +2934,6 @@ function ContractGenerator({ artists, companies, performances, events, execution
   const [contractText, setContractText] = useState('');
   const [language, setLanguage] = useState('nl');
 
-  // Effect to load jsPDF script when component mounts
   useEffect(() => {
     if (!document.getElementById('jspdf-script')) {
       const script = document.createElement('script');
@@ -2647,7 +2956,6 @@ function ContractGenerator({ artists, companies, performances, events, execution
         return;
     }
 
-    // --- Dynamische data berekenen ---
     const performanceExecutions = executions.filter(exec => exec.performanceId === performance.id);
     const executionIds = new Set(performanceExecutions.map(e => e.id));
     
@@ -2703,7 +3011,6 @@ function ContractGenerator({ artists, companies, performances, events, execution
     const year = today.getFullYear();
     const formattedDate = `${day}-${month}-${year}`;
 
-    // --- Sjabloon invullen ---
     let template = language === 'nl' ? contractTemplateNL : contractTemplateEN;
     
     const replacements = {
@@ -2760,18 +3067,17 @@ function ContractGenerator({ artists, companies, performances, events, execution
         const pageHeight = doc.internal.pageSize.height;
         const pageWidth = doc.internal.pageSize.width;
         const margin = 40;
-        const lineHeight = 12; // Ongeveer voor font size 10
-        const topMargin = 5 * lineHeight; // 5 witregels
+        const lineHeight = 12;
+        const topMargin = 5 * lineHeight;
 
         let yPos = margin + topMargin;
 
         if (logoData) {
             const imgProps = doc.getImageProperties(logoData);
-            const logoWidth = 100; // Iets groter voor betere zichtbaarheid
+            const logoWidth = 100;
             const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
             const x = pageWidth - logoWidth - margin;
             doc.addImage(logoData, 'PNG', x, margin, logoWidth, logoHeight);
-            // Zorg ervoor dat de tekst onder het logo begint als het logo hoog is
             yPos = Math.max(yPos, margin + logoHeight + 20);
         }
 
@@ -2786,7 +3092,6 @@ function ContractGenerator({ artists, companies, performances, events, execution
     };
     
     try {
-        // Gebruik een CORS proxy om de afbeelding te laden, dit kan nodig zijn in sommige omgevingen
         const logoUrl = 'https://cafetheaterfestival.nl/wp-content/uploads/2025/06/Logo_Web_Trans_Zwart.png';
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${logoUrl}`;
         
