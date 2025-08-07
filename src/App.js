@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Client, Account, Databases, ID, Query } from 'https://esm.sh/appwrite@14.0.1';
+import { Client, Account, Databases, ID, Query, Functions } from 'https://esm.sh/appwrite@14.0.1';
 
 
 // --- Appwrite Configuratie ---
@@ -18,6 +18,10 @@ const client = new Client();
 client.setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
 const account = new Account(client);
 const databases = new Databases(client);
+const functions = new Functions(client);
+
+// --- Super Admin Configuratie ---
+const SUPER_ADMIN_EMAIL = 'luc@cafetheaterfestival.nl';
 
 // --- Helper: Iconen (als JSX) ---
 const icons = {
@@ -41,14 +45,15 @@ const icons = {
   pdf: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
   copy: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
   check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
-  filter: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>,
-  chevronUp: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
   chevronDown: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
+  sortAsc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg>,
+  sortDesc: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg>,
+  settings: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
 };
 
 // --- Helper: Functie om speciale tekens te escapen voor RegExp ---
 function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& betekent de volledige gematchte string
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // --- Helper: Functie om alle documenten uit een collectie op te halen ---
@@ -56,7 +61,7 @@ const fetchAllDocuments = async (collectionId) => {
     const documents = [];
     let fetchedDocuments = [];
     let offset = 0;
-    const limit = 100; // Haal documenten op in batches van 100
+    const limit = 100;
 
     try {
         do {
@@ -83,6 +88,77 @@ const fetchAllDocuments = async (collectionId) => {
     }
 };
 
+// --- Custom Hook voor Dropdown functionaliteit ---
+function useDropdown() {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const toggle = () => setIsOpen(!isOpen);
+    const close = () => setIsOpen(false);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                close();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return { isOpen, toggle, close, dropdownRef };
+}
+
+// --- Custom Hook voor Sorteren & Filteren ---
+function useSortAndFilter(items, initialSortKey, searchKeys = []) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: initialSortKey, direction: 'ascending' });
+
+    const filteredAndSortedItems = useMemo(() => {
+        let filtered = [...items];
+        
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            filtered = filtered.filter(item => 
+                searchKeys.some(key => {
+                    const value = item[key];
+                    return String(value).toLowerCase().includes(lowercasedTerm);
+                })
+            );
+        }
+      
+        if (sortConfig.key) {
+            filtered.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+
+                if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+                    aValue = aValue ? 1 : 0;
+                    bValue = bValue ? 1 : 0;
+                } else {
+                    aValue = String(aValue || '').toLowerCase();
+                    bValue = String(bValue || '').toLowerCase();
+                }
+
+                if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return filtered;
+    }, [items, searchTerm, sortConfig, searchKeys]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    return { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort };
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -95,7 +171,10 @@ function App() {
       try {
         const currentUser = await account.get();
         if (currentUser.email.endsWith('@cafetheaterfestival.nl')) {
-          setUser(currentUser);
+          const prefs = await account.getPrefs();
+          // Super admin heeft altijd de editor rol.
+          const role = currentUser.email === SUPER_ADMIN_EMAIL ? 'super_admin' : (prefs.role || 'viewer');
+          setUser({ ...currentUser, role: role });
         } else {
           await account.deleteSession('current');
           setError('Toegang geweigerd. Alleen accounts van @cafetheaterfestival.nl zijn toegestaan.');
@@ -260,7 +339,9 @@ function CrmApp({ user, onLogout }) {
 
   const handleUpdateItem = async (collectionId, id, data) => {
     try {
-      await databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, data);
+      // Verwijder null waarden, Appwrite staat dit niet toe bij updates.
+      const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== null));
+      await databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, cleanData);
       showNotification('Item succesvol bijgewerkt!');
     } catch (e) {
       console.error("Fout bij bijwerken item:", e);
@@ -268,16 +349,32 @@ function CrmApp({ user, onLogout }) {
     }
   };
   
-  const handleBulkUpdateItems = async (collectionId, ids, data) => {
-    try {
-        await Promise.all(ids.map(id => 
-            databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, data)
-        ));
-        showNotification(`${ids.length} items succesvol bijgewerkt!`);
-    } catch (e) {
-        console.error("Fout bij bulk bijwerken:", e);
-        showNotification(`Bulk bijwerken mislukt: ${e.message}`, 'error');
-    }
+  const handleBulkUpdateItems = async (collectionId, updates) => {
+    showConfirm(`Weet je zeker dat je ${updates.length} items wilt bijwerken?`, async () => {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        const promises = updates.map(async ({ id, data }) => {
+            try {
+                // Verwijder null waarden, Appwrite staat dit niet toe bij updates.
+                const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== null));
+                await databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, cleanData);
+                successCount++;
+            } catch (e) {
+                console.error(`Fout bij bijwerken item ${id}:`, e);
+                errorCount++;
+            }
+        });
+
+        await Promise.all(promises);
+
+        if (errorCount > 0) {
+            showNotification(`${successCount} items bijgewerkt, ${errorCount} mislukt.`, 'error');
+        } else {
+            showNotification(`${successCount} items succesvol bijgewerkt!`, 'success');
+        }
+        hideConfirm();
+    });
   };
 
   const handleDeleteItem = (collectionId, id) => {
@@ -309,6 +406,8 @@ function CrmApp({ user, onLogout }) {
   const standardizeRole = (role) => (role || '').trim().toLowerCase();
   const artists = contacts.filter(c => standardizeRole(c.Role) === 'artiest');
   const cafeOwners = contacts.filter(c => standardizeRole(c.Role) === 'café-eigenaar');
+  
+  const hasEditPermissions = user.role === 'editor' || user.role === 'super_admin';
 
   return (
     <div className="flex h-screen bg-gray-50" style={{fontFamily: 'Inter, sans-serif'}}>
@@ -354,10 +453,12 @@ function CrmApp({ user, onLogout }) {
               contacts={contacts} 
               onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_CONTACTS_ID, data)}
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_CONTACTS_ID, id, data)}
-              onBulkUpdate={(ids, data) => handleBulkUpdateItems(APPWRITE_COLLECTION_CONTACTS_ID, ids, data)}
+              onBulkUpdate={(updates) => handleBulkUpdateItems(APPWRITE_COLLECTION_CONTACTS_ID, updates)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_CONTACTS_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_CONTACTS_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_CONTACTS_ID, ids)}
+              // Iedereen mag contacten bewerken
+              hasEditPermissions={true}
             />}
           {!loadingData && activeView === 'companies' && 
             <CompaniesView 
@@ -368,6 +469,7 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_COMPANIES_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_COMPANIES_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_COMPANIES_ID, ids)}
+              hasEditPermissions={hasEditPermissions}
             />}
           {!loadingData && activeView === 'performances' && 
             <PerformancesView 
@@ -378,6 +480,7 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_PERFORMANCES_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_PERFORMANCES_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_PERFORMANCES_ID, ids)}
+              hasEditPermissions={hasEditPermissions}
             />}
           {!loadingData && activeView === 'locations' && 
             <LocationsView 
@@ -388,6 +491,7 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_LOCATIONS_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_LOCATIONS_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_LOCATIONS_ID, ids)}
+              hasEditPermissions={hasEditPermissions}
             />}
           {!loadingData && activeView === 'executions' && 
             <ExecutionsView 
@@ -399,6 +503,7 @@ function CrmApp({ user, onLogout }) {
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_EXECUTIONS_ID, id, data)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_EXECUTIONS_ID, id)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_EXECUTIONS_ID, ids)}
+              hasEditPermissions={hasEditPermissions}
             />}
           {!loadingData && activeView === 'events' && 
             <EventsView 
@@ -411,6 +516,7 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_EVENTS_ID, id)}
               onBulkAdd={(data) => handleBulkAddItems(APPWRITE_COLLECTION_EVENTS_ID, data)}
               onBulkDelete={(ids) => handleBulkDeleteItems(APPWRITE_COLLECTION_EVENTS_ID, ids)}
+              hasEditPermissions={hasEditPermissions}
             />}
           {!loadingData && activeView === 'schedule' && 
             <ScheduleView 
@@ -422,13 +528,16 @@ function CrmApp({ user, onLogout }) {
             />}
           {!loadingData && activeView === 'contract' && 
             <ContractGenerator 
-              artists={artists}
+              contacts={contacts} 
               companies={companies} 
               performances={performances}
               events={events}
               executions={executions}
               showNotification={showNotification}
             />}
+          {!loadingData && activeView === 'team' && user.role === 'super_admin' &&
+            <TeamView showNotification={showNotification} />
+          }
         </main>
       </div>
     </div>
@@ -437,14 +546,15 @@ function CrmApp({ user, onLogout }) {
 
 function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, onClose }) {
   const navItems = [
-    { id: 'contacts', label: 'Contacten', icon: icons.users },
-    { id: 'companies', label: 'Gezelschappen', icon: icons.briefcase },
-    { id: 'performances', label: 'Voorstellingen', icon: icons.film },
-    { id: 'executions', label: 'Uitvoeringen', icon: icons.calendar },
-    { id: 'locations', label: 'Locaties', icon: icons.mapPin },
-    { id: 'events', label: 'Events', icon: icons.star },
-    { id: 'schedule', label: 'Blokkenschema', icon: icons.grid },
-    { id: 'contract', label: 'Contract Generator', icon: icons.fileText },
+    { id: 'contacts', label: 'Contacten', icon: icons.users, visible: true },
+    { id: 'companies', label: 'Gezelschappen', icon: icons.briefcase, visible: true },
+    { id: 'performances', label: 'Voorstellingen', icon: icons.film, visible: true },
+    { id: 'executions', label: 'Uitvoeringen', icon: icons.calendar, visible: true },
+    { id: 'locations', label: 'Locaties', icon: icons.mapPin, visible: true },
+    { id: 'events', label: 'Events', icon: icons.star, visible: true },
+    { id: 'schedule', label: 'Blokkenschema', icon: icons.grid, visible: true },
+    { id: 'contract', label: 'Contract Generator', icon: icons.fileText, visible: true },
+    { id: 'team', label: 'Team', icon: icons.settings, visible: user.role === 'super_admin' },
   ];
 
   return (
@@ -460,7 +570,7 @@ function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, 
             )}
         </div>
         <ul>
-          {navItems.map(item => (
+          {navItems.filter(item => item.visible).map(item => (
             <li key={item.id}>
               <button onClick={() => setActiveView(item.id)} className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200 ${activeView === item.id ? 'bg-indigo-100 text-indigo-700 font-semibold' : ''}`}>
                 <div className="w-6 h-6">{item.icon}</div><span>{item.label}</span>
@@ -474,6 +584,7 @@ function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, 
           <p>Ingelogd als:</p>
           <p className="font-semibold break-all">{user.name}</p>
           <p className="text-xs break-all">{user.email}</p>
+          <p className="text-xs capitalize mt-1">Rol: <span className="font-bold">{user.role.replace('_', ' ')}</span></p>
         </div>
         <button onClick={onLogout} className="w-full flex items-center space-x-3 p-3 rounded-lg text-left text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200">
           {icons.logout}<span>Uitloggen</span>
@@ -528,8 +639,38 @@ function CopyToClipboardButton({ textToCopy }) {
     );
 }
 
+function ColumnSelector({ columns, visibleColumns, toggleColumn }) {
+    const { isOpen, toggle, close, dropdownRef } = useDropdown();
 
-function ViewHeader({ title, countText, onAddNew, onAddBulk, onImport, onSearch, searchTerm, children }) {
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button onClick={toggle} className="flex items-center space-x-2 p-2 border rounded-lg shadow-sm bg-white">
+                <span>Kolommen</span>
+                {icons.chevronDown}
+            </button>
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border rounded-lg shadow-xl z-20">
+                    <div className="p-2 text-sm font-semibold text-gray-700 border-b">Toon kolommen</div>
+                    <div className="p-2 space-y-1">
+                        {columns.map(col => (
+                            <label key={col.key} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                                    checked={visibleColumns.has(col.key)}
+                                    onChange={() => toggleColumn(col.key)}
+                                />
+                                <span>{col.header}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ViewHeader({ title, countText, onAddNew, onAddBulk, onImport, onSearch, searchTerm, children, hasEditPermissions }) {
     return (
         <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm pt-4 pb-4 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-gray-200">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -537,20 +678,22 @@ function ViewHeader({ title, countText, onAddNew, onAddBulk, onImport, onSearch,
                   <h2 className="text-3xl font-bold text-gray-800">{title}</h2>
                   {countText && <p className="text-sm text-gray-500 mt-1">{countText}</p>}
                 </div>
-                <div className="flex space-x-2">
-                    {onImport && <button onClick={onImport} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center space-x-2">
-                        {icons.upload}
-                        <span>Importeren</span>
-                    </button>}
-                    {onAddBulk && <button onClick={onAddBulk} className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex items-center space-x-2">
-                        {icons.plus}
-                        <span>Meerdere toevoegen</span>
-                    </button>}
-                    {onAddNew && <button onClick={onAddNew} className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 flex items-center space-x-2">
-                        {icons.plus}
-                        <span>Nieuw</span>
-                    </button>}
-                </div>
+                {hasEditPermissions && (
+                    <div className="flex space-x-2">
+                        {onImport && <button onClick={onImport} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center space-x-2">
+                            {icons.upload}
+                            <span>Importeren</span>
+                        </button>}
+                        {onAddBulk && <button onClick={onAddBulk} className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex items-center space-x-2">
+                            {icons.plus}
+                            <span>Meerdere toevoegen</span>
+                        </button>}
+                        {onAddNew && <button onClick={onAddNew} className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 flex items-center space-x-2">
+                            {icons.plus}
+                            <span>Nieuw</span>
+                        </button>}
+                    </div>
+                )}
             </div>
             <div className="flex gap-4 items-center flex-wrap">
                 <div className="relative flex-grow">
@@ -680,138 +823,74 @@ function GenericImportModal({ onClose, onImport, requiredColumns, title }) {
     );
 }
 
+const SortableTh = ({ column, sortConfig, requestSort }) => {
+    const isSorted = sortConfig.key === column.key;
+    return (
+        <th 
+            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+            onClick={() => column.sortable && requestSort(column.key)}
+        >
+            <div className="flex items-center space-x-1">
+                <span>{column.header}</span>
+                {column.sortable && isSorted && (
+                    <span>{sortConfig.direction === 'ascending' ? icons.sortAsc : icons.sortDesc}</span>
+                )}
+            </div>
+        </th>
+    );
+};
+
 // --- Views ---
 
-function FilterPopover({ column, data, activeFilters, onFilterChange }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const popoverRef = useRef(null);
-    const buttonRef = useRef(null);
-
-    const uniqueValues = useMemo(() => {
-        const values = new Set(data.map(item => item[column.key]));
-        return Array.from(values).filter(Boolean).sort();
-    }, [data, column.key]);
-
-    const currentFilters = activeFilters[column.key] || new Set();
-
-    const handleToggle = (value) => {
-        const newFilters = new Set(currentFilters);
-        if (newFilters.has(value)) {
-            newFilters.delete(value);
-        } else {
-            newFilters.add(value);
-        }
-        onFilterChange(column.key, newFilters);
-    };
-    
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (popoverRef.current && !popoverRef.current.contains(event.target) && buttonRef.current && !buttonRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    if (uniqueValues.length === 0) return null;
-
-    return (
-        <div className="relative inline-block">
-            <button
-                ref={buttonRef}
-                onClick={() => setIsOpen(!isOpen)}
-                className={`p-1 rounded-full ${currentFilters.size > 0 ? 'bg-indigo-200 text-indigo-800' : 'text-gray-400 hover:bg-gray-200'}`}
-            >
-                <div className="w-4 h-4">{icons.filter}</div>
-            </button>
-            {isOpen && (
-                <div ref={popoverRef} className="absolute z-20 mt-2 w-56 -right-1/2 bg-white rounded-md shadow-lg border">
-                    <div className="p-2 text-sm font-semibold text-gray-700 border-b">Filter op {column.label}</div>
-                    <div className="max-h-60 overflow-y-auto p-2">
-                        {uniqueValues.map(value => (
-                            <label key={value} className="flex items-center space-x-2 p-1 rounded hover:bg-gray-100">
-                                <input
-                                    type="checkbox"
-                                    checked={currentFilters.has(value)}
-                                    onChange={() => handleToggle(value)}
-                                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                                />
-                                <span className="text-sm text-gray-800">{String(value)}</span>
-                            </label>
-                        ))}
-                    </div>
-                    <div className="p-2 border-t flex justify-end">
-                        <button onClick={() => onFilterChange(column.key, new Set())} className="text-xs text-indigo-600 hover:underline">Reset</button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [sortConfig, setSortConfig] = useState({ key: 'Name', direction: 'ascending' });
-  const [columnFilters, setColumnFilters] = useState({});
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true },
+    { key: 'Role', header: 'Rol', sortable: true },
+    { key: 'functie', header: 'Functie', sortable: true },
+    { key: 'yearsActive', header: 'Actieve Jaren', sortable: false },
+    { key: 'isCurrentlyEmployed', header: 'Actief?', sortable: true },
+    { key: 'Email', header: 'Email', sortable: true },
+    { key: 'Phone', header: 'Telefoon', sortable: true },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(ALL_COLUMNS.map(c => c.key).filter(k => k !== 'yearsActive')));
+  
+  const { filteredAndSortedItems: filteredAndSortedContacts, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+      contacts.filter(c => roleFilter === 'all' || (c.Role || '').trim().toLowerCase() === roleFilter),
+      'Name',
+      ALL_COLUMNS.map(c => c.key)
+  );
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
 
   const standardizeRole = (role) => (role || '').trim().toLowerCase();
-  const definedRoles = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
 
   const roles = useMemo(() => {
     const roleCounts = contacts.reduce((acc, c) => {
         const role = standardizeRole(c.Role);
-        if (role) {
-            acc[role] = (acc[role] || 0) + 1;
-        }
+        if (role) acc[role] = (acc[role] || 0) + 1;
         return acc;
     }, {});
-    
-    definedRoles.forEach(role => {
-        if (!roleCounts[role]) roleCounts[role] = 0;
-    });
-
     return Object.entries(roleCounts).map(([name, count]) => ({ name, count })).sort((a,b) => a.name.localeCompare(b.name));
   }, [contacts]);
   
-  const filteredContacts = useMemo(() => {
-      let filtered = contacts
-        .filter(c => roleFilter === 'all' || standardizeRole(c.Role) === roleFilter)
-        .filter(c => 
-            c.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (c.Email && c.Email.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-
-      // Apply column filters
-      Object.entries(columnFilters).forEach(([key, filterValues]) => {
-          if (filterValues.size > 0) {
-              filtered = filtered.filter(contact => filterValues.has(contact[key]));
-          }
-      });
-      
-      // Apply sorting
-      if (sortConfig.key) {
-        filtered.sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-            if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-            return 0;
-        });
-      }
-
-      return filtered;
-  }, [contacts, roleFilter, searchTerm, sortConfig, columnFilters]);
-
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [roleFilter, searchTerm, sortConfig, columnFilters]);
+  }, [roleFilter, searchTerm, sortConfig]);
 
   const handleEdit = (contact) => {
     setEditingContact(contact);
@@ -824,8 +903,12 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   };
   
   const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(new Set(filteredContacts.map(c => c.id)));
-    else setSelectedIds(new Set());
+    if (e.target.checked) {
+        const allIds = new Set(filteredAndSortedContacts.map(c => c.id));
+        setSelectedIds(allIds);
+    } else {
+        setSelectedIds(new Set());
+    }
   };
 
   const handleSelectOne = (e, id) => {
@@ -841,62 +924,16 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
       setSelectedIds(new Set());
     }
   };
-  
-  const handleBulkEdit = () => {
-    if (selectedIds.size > 0) setIsBulkEditModalOpen(true);
+
+  const handleBulkUpdate = (data) => {
+    const updates = Array.from(selectedIds).map(id => ({ id, data }));
+    onBulkUpdate(updates);
+    setIsBulkEditModalOpen(false);
+    setSelectedIds(new Set());
   };
 
-  const requestSort = (key) => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-        direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-  
-  const handleColumnFilterChange = (key, values) => {
-    setColumnFilters(prev => ({ ...prev, [key]: values }));
-  };
-
-  const isAllSelected = filteredContacts.length > 0 && selectedIds.size === filteredContacts.length;
-  const countText = `Toont ${filteredContacts.length} van ${contacts.length} contacten`;
-  
-  const getTableHeaders = () => {
-    const baseHeaders = [
-        { key: 'Name', label: 'Naam', filterable: true },
-        { key: 'Role', label: 'Rol', filterable: true },
-        { key: 'Email', label: 'Email', filterable: false },
-        { key: 'Phone', label: 'Telefoon', filterable: false },
-    ];
-    if (roleFilter === 'all') return baseHeaders;
-    
-    switch (roleFilter) {
-        case 'artiest': return [...baseHeaders, { key: 'pronouns', label: 'Voornaamwoorden', filterable: true }, { key: 'education', label: 'Opleiding', filterable: true }, { key: 'graduationYear', label: 'Afstudeerjaar', filterable: true }];
-        case 'vrijwilliger': return [...baseHeaders, { key: 'shirtSize', label: 'Shirtmaat', filterable: true }, { key: 'previouslyVolunteer', label: 'Eerder vrijwilliger?', filterable: true }];
-        case 'fotograaf': return [...baseHeaders, { key: 'shirtSize', label: 'Shirtmaat', filterable: true }, { key: 'previouslyPhotographer', label: 'Eerder fotograaf?', filterable: true }];
-        case 'teamlid': return [...baseHeaders, { key: 'privateEmail', label: 'Privé Email', filterable: false }];
-        default: return baseHeaders;
-    }
-  };
-  
-  const renderTableRow = (contact) => {
-    const baseCells = [
-        <td key="name" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Name}</span><CopyToClipboardButton textToCopy={contact.Name} /></div></td>,
-        <td key="role" className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>,
-        <td key="email" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Email}</span>{contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}</div></td>,
-        <td key="phone" className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Phone}</span>{contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}</div></td>
-    ];
-
-    if (roleFilter === 'all') return baseCells;
-
-    switch (roleFilter) {
-        case 'artiest': return [...baseCells, <td key="pronouns" className="px-6 py-4 whitespace-nowrap">{contact.pronouns}</td>, <td key="education" className="px-6 py-4 whitespace-nowrap">{contact.education}</td>, <td key="gradYear" className="px-6 py-4 whitespace-nowrap">{contact.graduationYear}</td>];
-        case 'vrijwilliger': return [...baseCells, <td key="shirt" className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>, <td key="prevVol" className="px-6 py-4 whitespace-nowrap">{contact.previouslyVolunteer ? 'Ja' : 'Nee'}</td>];
-        case 'fotograaf': return [...baseCells, <td key="shirt" className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>, <td key="prevPho" className="px-6 py-4 whitespace-nowrap">{contact.previouslyPhotographer ? 'Ja' : 'Nee'}</td>];
-        case 'teamlid': return [...baseCells, <td key="privEmail" className="px-6 py-4 whitespace-nowrap">{contact.privateEmail}</td>];
-        default: return baseCells;
-    }
-  };
+  const isAllSelected = filteredAndSortedContacts.length > 0 && selectedIds.size === filteredAndSortedContacts.length;
+  const countText = `Toont ${filteredAndSortedContacts.length} van ${contacts.length} contacten`;
 
   return (
     <div>
@@ -907,21 +944,26 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
       >
-        <div className="flex space-x-2 flex-wrap gap-2">
-            <button onClick={() => setRoleFilter('all')} className={`px-3 py-1 rounded-full text-sm ${roleFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>Alles ({contacts.length})</button>
-            {roles.map(role => (
-              <button key={role.name} onClick={() => setRoleFilter(role.name)} className={`px-3 py-1 rounded-full text-sm capitalize ${roleFilter === role.name ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>{role.name} ({role.count})</button>
-            ))}
-        </div>
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
+      
+      <div className="mb-4">
+          <div className="flex space-x-2 flex-wrap gap-2">
+              <button onClick={() => setRoleFilter('all')} className={`px-3 py-1 rounded-full text-sm ${roleFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>Alles ({contacts.length})</button>
+              {roles.map(role => (
+                <button key={role.name} onClick={() => setRoleFilter(role.name)} className={`px-3 py-1 rounded-full text-sm capitalize ${roleFilter === role.name ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>{role.name} ({role.count})</button>
+              ))}
+          </div>
+      </div>
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <div className="flex space-x-2">
-                <button onClick={handleBulkEdit} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center space-x-1">
-                    {icons.edit} <span>Bewerk Selectie</span>
+                <button onClick={() => setIsBulkEditModalOpen(true)} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center space-x-1">
+                    {icons.edit} <span>Bulk Bewerken</span>
                 </button>
                 <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
                     {icons.trash} <span>Verwijderen</span>
@@ -938,29 +980,15 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
                 <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                   checked={isAllSelected}
                   onChange={handleSelectAll}
-                  disabled={filteredContacts.length === 0}
+                  disabled={filteredAndSortedContacts.length === 0}
                 />
               </th>
-              {getTableHeaders().map(header => (
-                <th key={header.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="flex items-center space-x-2">
-                        <button onClick={() => requestSort(header.key)} className="flex items-center">
-                            <span>{header.label}</span>
-                            {sortConfig.key === header.key && (
-                                <span className="ml-1 w-4 h-4">{sortConfig.direction === 'ascending' ? icons.chevronUp : icons.chevronDown}</span>
-                            )}
-                        </button>
-                        {header.filterable && (
-                            <FilterPopover column={header} data={contacts} activeFilters={columnFilters} onFilterChange={handleColumnFilterChange} />
-                        )}
-                    </div>
-                </th>
-              ))}
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredContacts.length > 0 ? filteredContacts.map(contact => (
+            {filteredAndSortedContacts.length > 0 ? filteredAndSortedContacts.map(contact => (
               <tr key={contact.id} className={selectedIds.has(contact.id) ? 'bg-indigo-50' : ''}>
                 <td className="px-4 py-4">
                    <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
@@ -968,14 +996,22 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
                     onChange={(e) => handleSelectOne(e, contact.id)}
                   />
                 </td>
-                {renderTableRow(contact)}
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                  <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                </td>
+                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Name}</span><CopyToClipboardButton textToCopy={contact.Name} /></div></td>}
+                {visibleColumns.has('Role') && <td className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>}
+                {visibleColumns.has('functie') && <td className="px-6 py-4 whitespace-nowrap capitalize">{(contact.functie || []).join(', ')}</td>}
+                {visibleColumns.has('yearsActive') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(contact.yearsActive || []).join(', ')}</td>}
+                {visibleColumns.has('isCurrentlyEmployed') && <td className="px-6 py-4 whitespace-nowrap">{contact.isCurrentlyEmployed ? 'Ja' : 'Nee'}</td>}
+                {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Email}</span>{contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}</div></td>}
+                {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Phone}</span>{contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}</div></td>}
+                {hasEditPermissions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                )}
               </tr>
             )) : (
-              <tr><td colSpan={getTableHeaders().length + 2} className="text-center py-4">Geen contacten gevonden.</td></tr>
+              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen contacten gevonden.</td></tr>
             )}
           </tbody>
         </table>
@@ -983,6 +1019,7 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
 
       {isModalOpen && (
         <ContactForm 
+          key={editingContact ? editingContact.id : 'new-contact'}
           contact={editingContact} 
           onClose={() => setIsModalOpen(false)}
           onSave={(data) => {
@@ -996,13 +1033,10 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         />
       )}
       {isBulkEditModalOpen && (
-        <BulkEditContactsModal
+        <BulkEditContactForm
             onClose={() => setIsBulkEditModalOpen(false)}
-            onSave={(data) => {
-                onBulkUpdate(Array.from(selectedIds), data);
-                setIsBulkEditModalOpen(false);
-                setSelectedIds(new Set());
-            }}
+            onSave={handleBulkUpdate}
+            roles={roles.map(r => r.name)}
         />
       )}
       {isImportModalOpen && (
@@ -1017,13 +1051,9 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
                 Phone: item.Phone || '',
                 Adress: item.Adress || '',
                 Notes: item.Notes || '',
-                pronouns: item.pronouns || '',
-                education: item.education || '',
-                graduationYear: item.graduationYear ? parseInt(item.graduationYear, 10) : null,
-                shirtSize: item.shirtSize || '',
-                previouslyVolunteer: item.previouslyVolunteer === 'true' || item.previouslyVolunteer === true,
-                previouslyPhotographer: item.previouslyPhotographer === 'true' || item.previouslyPhotographer === true,
-                privateEmail: item.privateEmail || '',
+                isCurrentlyEmployed: item.isCurrentlyEmployed === 'true',
+                yearsActive: item.yearsActive ? item.yearsActive.split(';').map(s => s.trim()) : [],
+                functie: item.functie ? [item.functie] : [],
             })))}
         />
       )}
@@ -1032,22 +1062,34 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
 }
 
 function ContactForm({ contact, onClose, onSave }) {
-  const initialData = {
+  const [formData, setFormData] = useState({
     name: contact?.Name || '',
-    role: contact?.Role || 'artiest',
+    role: contact?.Role || '',
     email: contact?.Email || '',
     phone: contact?.Phone || '',
     address: contact?.Adress || '',
     notes: contact?.Notes || '',
-    pronouns: contact?.pronouns || '',
-    education: contact?.education || '',
-    graduationYear: contact?.graduationYear || '',
-    shirtSize: contact?.shirtSize || '',
-    previouslyVolunteer: contact?.previouslyVolunteer || false,
-    previouslyPhotographer: contact?.previouslyPhotographer || false,
-    privateEmail: contact?.privateEmail || '',
+    isCurrentlyEmployed: contact?.isCurrentlyEmployed || false,
+    yearsActive: new Set(contact?.yearsActive || []),
+    // Pak de eerste functie uit de array, aangezien we maar één functie-veld hebben.
+    functie: (contact?.functie && Array.isArray(contact.functie) && contact.functie.length > 0) ? contact.functie[0] : '',
+  });
+  const [showMoreYears, setShowMoreYears] = useState(false);
+
+  const recentYears = [2025, 2024, 2023, 2022];
+  const olderYears = [2021, 2020, 2019, 2018, 2017, 2016];
+
+  const handleYearChange = (year) => {
+    setFormData(prev => {
+        const newYears = new Set(prev.yearsActive);
+        if (newYears.has(String(year))) {
+            newYears.delete(String(year));
+        } else {
+            newYears.add(String(year));
+        }
+        return { ...prev, yearsActive: newYears };
+    });
   };
-  const [formData, setFormData] = useState(initialData);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -1056,25 +1098,29 @@ function ContactForm({ contact, onClose, onSave }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const standardizedRole = formData.role.trim().toLowerCase();
+    
+    // Bereid 'functie' voor: moet een array zijn als er een waarde is.
+    let functieForAppwrite = [];
+    if (['teamlid', 'artiest', 'vrijwilliger'].includes(standardizedRole) && formData.functie.trim()) {
+        functieForAppwrite = [formData.functie.trim()];
+    }
+
     const dataForAppwrite = {
         Name: formData.name,
-        Role: formData.role,
+        Role: standardizedRole,
         Email: formData.email,
         Phone: formData.phone,
         Adress: formData.address,
         Notes: formData.notes,
-        pronouns: formData.role === 'artiest' ? formData.pronouns : null,
-        education: formData.role === 'artiest' ? formData.education : null,
-        graduationYear: formData.role === 'artiest' && formData.graduationYear ? parseInt(formData.graduationYear) : null,
-        shirtSize: (formData.role === 'vrijwilliger' || formData.role === 'fotograaf') ? formData.shirtSize : null,
-        previouslyVolunteer: formData.role === 'vrijwilliger' ? formData.previouslyVolunteer : null,
-        previouslyPhotographer: formData.role === 'fotograaf' ? formData.previouslyPhotographer : null,
-        privateEmail: formData.role === 'teamlid' ? formData.privateEmail : null,
+        isCurrentlyEmployed: standardizedRole === 'teamlid' ? formData.isCurrentlyEmployed : false,
+        yearsActive: Array.from(formData.yearsActive),
+        functie: functieForAppwrite,
     };
     onSave(dataForAppwrite);
   };
   
-  const roleOptions = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
+  const standardizedRole = formData.role.trim().toLowerCase();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
@@ -1085,36 +1131,49 @@ function ContactForm({ contact, onClose, onSave }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Volledige naam" className="w-full p-2 border rounded" required />
-          <select name="role" value={formData.role} onChange={handleChange} className="w-full p-2 border rounded capitalize">
-            {roleOptions.map(role => <option key={role} value={role} className="capitalize">{role}</option>)}
-          </select>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Telefoonnummer" className="w-full p-2 border rounded" />
+          <input type="text" name="role" value={formData.role} onChange={handleChange} placeholder="Rol (bv. artiest, vrijwilliger)" className="w-full p-2 border rounded" required />
           
-          {formData.role === 'artiest' && (
-            <>
-                <input type="text" name="pronouns" value={formData.pronouns} onChange={handleChange} placeholder="Gewenste voornaamwoorden" className="w-full p-2 border rounded" />
-                <input type="text" name="education" value={formData.education} onChange={handleChange} placeholder="Opleiding" className="w-full p-2 border rounded" />
-                <input type="number" name="graduationYear" value={formData.graduationYear} onChange={handleChange} placeholder="Afstudeerjaar" className="w-full p-2 border rounded" />
-            </>
-          )}
-          {(formData.role === 'vrijwilliger' || formData.role === 'fotograaf') && (
-            <input type="text" name="shirtSize" value={formData.shirtSize} onChange={handleChange} placeholder="Shirtmaat" className="w-full p-2 border rounded" />
-          )}
-          {formData.role === 'vrijwilliger' && (
-            <label className="flex items-center space-x-2"><input type="checkbox" name="previouslyVolunteer" checked={formData.previouslyVolunteer} onChange={handleChange} /><span>Eerder vrijwilliger geweest?</span></label>
-          )}
-          {formData.role === 'fotograaf' && (
-            <label className="flex items-center space-x-2"><input type="checkbox" name="previouslyPhotographer" checked={formData.previouslyPhotographer} onChange={handleChange} /><span>Eerder fotograaf geweest?</span></label>
-          )}
-          {formData.role === 'teamlid' && (
-            <input type="email" name="privateEmail" value={formData.privateEmail} onChange={handleChange} placeholder="Privé-email" className="w-full p-2 border rounded" />
+          {['teamlid', 'artiest', 'vrijwilliger'].includes(standardizedRole) && (
+             <input type="text" name="functie" value={formData.functie} onChange={handleChange} placeholder="Functie (bv. productieleider, acteur)" className="w-full p-2 border rounded" />
           )}
 
+          {standardizedRole === 'teamlid' && (
+            <label className="flex items-center space-x-2 p-2 bg-gray-50 rounded-md">
+                <input type="checkbox" name="isCurrentlyEmployed" checked={formData.isCurrentlyEmployed} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                <span>Momenteel werkzaam voor het festival?</span>
+            </label>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Actieve Jaren</label>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {recentYears.map(year => (
+                    <label key={year} className="flex items-center space-x-2">
+                        <input type="checkbox" checked={formData.yearsActive.has(String(year))} onChange={() => handleYearChange(year)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                        <span>{year}</span>
+                    </label>
+                ))}
+            </div>
+            {showMoreYears && (
+                 <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+                    {olderYears.map(year => (
+                        <label key={year} className="flex items-center space-x-2">
+                            <input type="checkbox" checked={formData.yearsActive.has(String(year))} onChange={() => handleYearChange(year)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                            <span>{year}</span>
+                        </label>
+                    ))}
+                </div>
+            )}
+            <button type="button" onClick={() => setShowMoreYears(!showMoreYears)} className="text-sm text-indigo-600 hover:underline mt-2">
+                {showMoreYears ? 'Minder jaren tonen' : 'Meer jaren tonen'}
+            </button>
+          </div>
+
+          <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
+          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Telefoonnummer" className="w-full p-2 border rounded" />
           <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Adres" className="w-full p-2 border rounded" />
           <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Notities" className="w-full p-2 border rounded h-24"></textarea>
-          
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Opslaan</button>
           </div>
@@ -1124,112 +1183,93 @@ function ContactForm({ contact, onClose, onSave }) {
   );
 }
 
-function BulkEditContactsModal({ onClose, onSave }) {
-    const [updateData, setUpdateData] = useState({});
+function BulkEditContactForm({ onClose, onSave, roles }) {
     const [fieldsToUpdate, setFieldsToUpdate] = useState({});
+    const [formData, setFormData] = useState({
+        Role: '',
+        functie: '',
+        isCurrentlyEmployed: false,
+        Notes: '',
+        Adress: '',
+    });
 
-    const roleOptions = ['artiest', 'café-eigenaar', 'fotograaf', 'vrijwilliger', 'teamlid'];
-
-    const handleFieldChange = (field, value) => {
-        setUpdateData(prev => ({ ...prev, [field]: value }));
+    const handleCheckboxChange = (e) => {
+        const { name, checked } = e.target;
+        setFieldsToUpdate(prev => ({ ...prev, [name]: checked }));
     };
 
-    const handleCheckboxChange = (field, isChecked) => {
-        setFieldsToUpdate(prev => ({ ...prev, [field]: isChecked }));
-        if (!isChecked) {
-            const newUpdateData = { ...updateData };
-            delete newUpdateData[field];
-            setUpdateData(newUpdateData);
-        }
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
-    
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        const finalData = {};
-        for (const field in fieldsToUpdate) {
-            if (fieldsToUpdate[field]) {
-                finalData[field] = updateData[field] === undefined ? null : updateData[field];
+        const dataToUpdate = {};
+        for (const key in fieldsToUpdate) {
+            if (fieldsToUpdate[key]) {
+                 if (key === 'functie') {
+                    // Zorg ervoor dat functie een array is
+                    dataToUpdate[key] = formData[key] ? [formData[key]] : [];
+                } else {
+                    dataToUpdate[key] = formData[key];
+                }
             }
         }
-        if (Object.keys(finalData).length > 0) {
-            onSave(finalData);
-        } else {
-            onClose();
+        if (Object.keys(dataToUpdate).length > 0) {
+            onSave(dataToUpdate);
         }
     };
+
+    const renderField = (name, label, type = 'text', options = {}) => (
+        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            <input
+                type="checkbox"
+                name={name}
+                checked={!!fieldsToUpdate[name]}
+                onChange={handleCheckboxChange}
+                className="h-5 w-5 text-indigo-600 border-gray-300 rounded"
+            />
+            <label className="w-32 font-medium text-gray-700">{label}</label>
+            {type === 'select' ? (
+                <select name={name} value={formData[name]} onChange={handleInputChange} disabled={!fieldsToUpdate[name]} className="w-full p-2 border rounded disabled:bg-gray-200">
+                    <option value="">Kies een {label.toLowerCase()}</option>
+                    {options.items.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+            ) : type === 'checkbox_input' ? (
+                 <input type="checkbox" name={name} checked={formData[name]} onChange={handleInputChange} disabled={!fieldsToUpdate[name]} className="h-5 w-5 text-indigo-600 border-gray-300 rounded" />
+            ) : (
+                <input
+                    type={type}
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleInputChange}
+                    placeholder={label}
+                    disabled={!fieldsToUpdate[name]}
+                    className="w-full p-2 border rounded disabled:bg-gray-200"
+                />
+            )}
+        </div>
+    );
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
-                <h3 className="text-2xl font-bold mb-6">Contacten in Bulk Bewerken</h3>
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold">Contacten Bulk Bewerken</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">Vink de kenmerken aan die je wilt bijwerken voor de geselecteerde contacten. Alleen de aangevinkte velden worden gewijzigd.</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <p className="text-sm text-gray-600">Vink de velden aan die je wilt bijwerken voor alle geselecteerde contacten. Lege velden zullen de bestaande waarde wissen.</p>
+                    {renderField('Role', 'Rol', 'select', { items: roles })}
+                    {renderField('functie', 'Functie')}
+                    {renderField('isCurrentlyEmployed', 'Actief?', 'checkbox_input')}
+                    {renderField('Adress', 'Adres')}
+                    {renderField('Notes', 'Notities')}
                     
-                    {/* Role */}
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_role" onChange={e => handleCheckboxChange('Role', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_role" className="font-medium">Rol</label>
-                        <select name="Role" onChange={e => handleFieldChange('Role', e.target.value)} disabled={!fieldsToUpdate.Role} className="w-full p-2 border rounded disabled:bg-gray-200 capitalize">
-                            {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
-                        </select>
-                    </div>
-                    
-                    {/* Artist fields */}
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_pronouns" onChange={e => handleCheckboxChange('pronouns', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_pronouns" className="font-medium">Voornaamwoorden</label>
-                        <input type="text" name="pronouns" onChange={e => handleFieldChange('pronouns', e.target.value)} disabled={!fieldsToUpdate.pronouns} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_education" onChange={e => handleCheckboxChange('education', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_education" className="font-medium">Opleiding</label>
-                        <input type="text" name="education" onChange={e => handleFieldChange('education', e.target.value)} disabled={!fieldsToUpdate.education} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_graduationYear" onChange={e => handleCheckboxChange('graduationYear', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_graduationYear" className="font-medium">Afstudeerjaar</label>
-                        <input type="number" name="graduationYear" onChange={e => handleFieldChange('graduationYear', parseInt(e.target.value))} disabled={!fieldsToUpdate.graduationYear} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-
-                    {/* Volunteer/Photographer fields */}
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_shirtSize" onChange={e => handleCheckboxChange('shirtSize', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_shirtSize" className="font-medium">Shirtmaat</label>
-                        <input type="text" name="shirtSize" onChange={e => handleFieldChange('shirtSize', e.target.value)} disabled={!fieldsToUpdate.shirtSize} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_previouslyVolunteer" onChange={e => handleCheckboxChange('previouslyVolunteer', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_previouslyVolunteer" className="font-medium">Eerder Vrijwilliger?</label>
-                        <input type="checkbox" name="previouslyVolunteer" onChange={e => handleFieldChange('previouslyVolunteer', e.target.checked)} disabled={!fieldsToUpdate.previouslyVolunteer} className="h-4 w-4" />
-                    </div>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_previouslyPhotographer" onChange={e => handleCheckboxChange('previouslyPhotographer', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_previouslyPhotographer" className="font-medium">Eerder Fotograaf?</label>
-                        <input type="checkbox" name="previouslyPhotographer" onChange={e => handleFieldChange('previouslyPhotographer', e.target.checked)} disabled={!fieldsToUpdate.previouslyPhotographer} className="h-4 w-4" />
-                    </div>
-
-                    {/* Team member fields */}
-                     <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_privateEmail" onChange={e => handleCheckboxChange('privateEmail', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_privateEmail" className="font-medium">Privé Email</label>
-                        <input type="email" name="privateEmail" onChange={e => handleFieldChange('privateEmail', e.target.value)} disabled={!fieldsToUpdate.privateEmail} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-
-                    {/* Common fields */}
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_address" onChange={e => handleCheckboxChange('Adress', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_address" className="font-medium">Adres</label>
-                        <input type="text" name="Adress" onChange={e => handleFieldChange('Adress', e.target.value)} disabled={!fieldsToUpdate.Adress} className="w-full p-2 border rounded disabled:bg-gray-200" />
-                    </div>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-md">
-                        <input type="checkbox" id="update_notes" onChange={e => handleCheckboxChange('Notes', e.target.checked)} className="h-4 w-4" />
-                        <label htmlFor="update_notes" className="font-medium">Notities</label>
-                        <textarea name="Notes" onChange={e => handleFieldChange('Notes', e.target.value)} disabled={!fieldsToUpdate.Notes} className="w-full p-2 border rounded disabled:bg-gray-200 h-20"></textarea>
-                    </div>
-
                     <div className="flex justify-end space-x-4 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Wijzigingen Opslaan</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Wijzigingen Toepassen</button>
                     </div>
                 </form>
             </div>
@@ -1239,14 +1279,14 @@ function BulkEditContactsModal({ onClose, onSave }) {
 
 
 // --- ANDERE VIEWS BLIJVEN HIER (onveranderd) ---
-function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [addArtistModalInfo, setAddArtistModalInfo] = useState({ isOpen: false, company: null });
-  const [viewArtistModalInfo, setViewArtistModalInfo] = useState({ isOpen: false, artists: [], companyName: '', company: null });
+  const [viewArtistModalInfo, setViewArtistModalInfo] = useState({ isOpen: false, artists: [], companyName: '' });
 
   const filteredCompanies = useMemo(() => {
     return companies
@@ -1299,9 +1339,10 @@ function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAd
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
       />
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
@@ -1313,9 +1354,7 @@ function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAd
       <div className="space-y-4">
         {filteredCompanies.length > 0 ? filteredCompanies.map(company => {
           const companyPlayerIds = new Set(company.playerIds || []);
-          const companyNonPlayerIds = new Set(company.nonPlayerIds || []);
-          const allMemberIds = new Set([...companyPlayerIds, ...companyNonPlayerIds, company.contactPersonId]);
-          const companyArtists = artists.filter(a => allMemberIds.has(a.id));
+          const companyArtists = artists.filter(a => companyPlayerIds.has(a.id) || a.id === company.contactPersonId);
           
           return (
             <div key={company.id} className={`bg-white p-4 rounded-lg shadow-md transition-colors ${selectedIds.has(company.id) ? 'border-2 border-indigo-500' : 'border border-transparent'}`}>
@@ -1330,29 +1369,33 @@ function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAd
                       <p className="text-gray-600 mt-1 text-sm">{company.Description}</p>
                     </div>
                 </div>
-                <div className="flex-shrink-0">
-                  <button onClick={() => handleEdit(company)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                  <button onClick={() => onDelete(company.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                </div>
+                {hasEditPermissions && (
+                    <div className="flex-shrink-0">
+                      <button onClick={() => handleEdit(company)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(company.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </div>
+                )}
               </div>
               <div className="mt-4 pl-9 flex justify-between items-center">
                   <div>
                       <h4 className="font-semibold text-base mb-2">Artiesten ({companyArtists.length})</h4>
                       <button 
-                        onClick={() => setViewArtistModalInfo({ isOpen: true, artists: companyArtists, companyName: company.Name, company: company })}
+                        onClick={() => setViewArtistModalInfo({ isOpen: true, artists: companyArtists, companyName: company.Name })}
                         className="list-disc list-inside bg-gray-50 p-3 rounded-md text-sm text-left hover:bg-gray-100 w-full"
                         disabled={companyArtists.length === 0}
                       >
                         {companyArtists.length > 0 ? companyArtists.map(artist => artist.Name).join(', ') : <span className="text-gray-500">Nog geen artiesten gekoppeld.</span>}
                       </button>
                   </div>
-                  <button
-                      onClick={() => setAddArtistModalInfo({ isOpen: true, company: company })}
-                      className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 self-end flex items-center space-x-2 shadow-sm"
-                  >
-                      {icons.users}
-                      <span>Artiesten beheren</span>
-                  </button>
+                  {hasEditPermissions && (
+                      <button
+                          onClick={() => setAddArtistModalInfo({ isOpen: true, company: company })}
+                          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 self-end flex items-center space-x-2 shadow-sm"
+                      >
+                          {icons.users}
+                          <span>Artiesten beheren</span>
+                      </button>
+                  )}
               </div>
             </div>
           );
@@ -1363,13 +1406,12 @@ function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAd
       {isImportModalOpen && (
         <GenericImportModal
             title="Gezelschappen"
-            requiredColumns={['Name', 'Description', 'playerIds', 'nonPlayerIds', 'contactPersonId']}
+            requiredColumns={['Name', 'Description', 'playerIds', 'contactPersonId']}
             onClose={() => setIsImportModalOpen(false)}
             onImport={(data) => onBulkAdd(data.map(item => ({
                 Name: item.Name || '',
                 Description: item.Description || '',
                 playerIds: item.playerIds ? item.playerIds.split(';').map(s => s.trim()) : [],
-                nonPlayerIds: item.nonPlayerIds ? item.nonPlayerIds.split(';').map(s => s.trim()) : [],
                 contactPersonId: item.contactPersonId || null,
             })))}
         />
@@ -1386,8 +1428,7 @@ function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAd
         <ViewCompanyArtistsModal
           artists={viewArtistModalInfo.artists}
           companyName={viewArtistModalInfo.companyName}
-          company={viewArtistModalInfo.company}
-          onClose={() => setViewArtistModalInfo({ isOpen: false, artists: [], companyName: '', company: null })}
+          onClose={() => setViewArtistModalInfo({ isOpen: false, artists: [], companyName: '' })}
         />
       )}
     </div>
@@ -1403,7 +1444,6 @@ function CompanyForm({ company, onClose, onSave }) {
         Name: formData.name, 
         Description: formData.description,
         playerIds: company?.playerIds || [],
-        nonPlayerIds: company?.nonPlayerIds || [],
         contactPersonId: company?.contactPersonId || null,
     };
     onSave(dataToSave); 
@@ -1425,13 +1465,7 @@ function CompanyForm({ company, onClose, onSave }) {
   );
 }
 
-function ViewCompanyArtistsModal({ artists, companyName, company, onClose }) {
-    const getArtistRole = (artistId) => {
-        if (company?.playerIds?.includes(artistId)) return <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Speler</span>;
-        if (company?.nonPlayerIds?.includes(artistId)) return <span className="text-xs bg-gray-100 text-gray-800 font-medium px-2 py-0.5 rounded-full">Niet-speler</span>;
-        return null;
-    };
-
+function ViewCompanyArtistsModal({ artists, companyName, onClose }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
@@ -1443,11 +1477,7 @@ function ViewCompanyArtistsModal({ artists, companyName, company, onClose }) {
                     {artists.length > 0 ? artists.map(artist => (
                         <div key={artist.id} className="p-4 border rounded-lg bg-gray-50">
                             <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                    <h4 className="font-bold text-lg">{artist.Name}</h4>
-                                    {getArtistRole(artist.id)}
-                                    {company?.contactPersonId === artist.id && <span className="text-xs bg-green-100 text-green-800 font-medium px-2 py-0.5 rounded-full">Contactpersoon</span>}
-                                </div>
+                                <h4 className="font-bold text-lg">{artist.Name}</h4>
                                 <CopyToClipboardButton textToCopy={artist.Name} />
                             </div>
                             <div className="text-sm space-y-1">
@@ -1474,7 +1504,6 @@ function ViewCompanyArtistsModal({ artists, companyName, company, onClose }) {
 function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompany }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [playerIds, setPlayerIds] = useState(() => new Set(company.playerIds || []));
-  const [nonPlayerIds, setNonPlayerIds] = useState(() => new Set(company.nonPlayerIds || []));
   const [contactPersonId, setContactPersonId] = useState(company.contactPersonId || null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -1484,28 +1513,14 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
       .sort((a,b) => a.Name.localeCompare(b.Name));
   }, [allArtists, searchTerm]);
 
-  const handleToggleRole = (artistId, role) => {
+  const handleTogglePlayer = (artistId) => {
     const newPlayerIds = new Set(playerIds);
-    const newNonPlayerIds = new Set(nonPlayerIds);
-
-    if (role === 'player') {
-        if (newPlayerIds.has(artistId)) {
-            newPlayerIds.delete(artistId);
-        } else {
-            newPlayerIds.add(artistId);
-            newNonPlayerIds.delete(artistId);
-        }
-    } else if (role === 'nonPlayer') {
-        if (newNonPlayerIds.has(artistId)) {
-            newNonPlayerIds.delete(artistId);
-        } else {
-            newNonPlayerIds.add(artistId);
-            newPlayerIds.delete(artistId);
-        }
+    if (newPlayerIds.has(artistId)) {
+      newPlayerIds.delete(artistId);
+    } else {
+      newPlayerIds.add(artistId);
     }
-    
     setPlayerIds(newPlayerIds);
-    setNonPlayerIds(newNonPlayerIds);
   };
 
   const handleSetContactPerson = (artistId) => {
@@ -1517,7 +1532,6 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
     try {
         await onUpdateCompany(company.id, {
             playerIds: Array.from(playerIds),
-            nonPlayerIds: Array.from(nonPlayerIds),
             contactPersonId: contactPersonId,
         });
     } catch (e) {
@@ -1530,7 +1544,7 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-4xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
+      <div className="bg-white rounded-lg p-8 w-full max-w-3xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-2xl font-bold">Artiesten beheren voor "{company.Name}"</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
@@ -1553,7 +1567,6 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
                     <tr>
                         <th className="p-3 text-left text-sm font-semibold text-gray-600">Artiest</th>
                         <th className="p-3 text-center text-sm font-semibold text-gray-600 w-28">Speler</th>
-                        <th className="p-3 text-center text-sm font-semibold text-gray-600 w-28">Niet-speler</th>
                         <th className="p-3 text-center text-sm font-semibold text-gray-600 w-32">Contactpersoon</th>
                     </tr>
                 </thead>
@@ -1565,16 +1578,8 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
                                 <input 
                                     type="checkbox"
                                     checked={playerIds.has(artist.id)}
-                                    onChange={() => handleToggleRole(artist.id, 'player')}
+                                    onChange={() => handleTogglePlayer(artist.id)}
                                     className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                />
-                            </td>
-                            <td className="p-3 text-center">
-                                <input 
-                                    type="checkbox"
-                                    checked={nonPlayerIds.has(artist.id)}
-                                    onChange={() => handleToggleRole(artist.id, 'nonPlayer')}
-                                    className="h-5 w-5 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
                                 />
                             </td>
                             <td className="p-3 text-center">
@@ -1588,7 +1593,7 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
                             </td>
                         </tr>
                     )) : (
-                        <tr><td colSpan="4" className="text-center text-gray-500 p-4">Geen artiesten gevonden.</td></tr>
+                        <tr><td colSpan="3" className="text-center text-gray-500 p-4">Geen artiesten gevonden.</td></tr>
                     )}
                 </tbody>
             </table>
@@ -1606,12 +1611,47 @@ function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompan
 }
 
 
-function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingPerformance, setEditingPerformance] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Title', header: 'Titel', sortable: true },
+    { key: 'companyId', header: 'Gezelschap', sortable: true },
+    { key: 'genre', header: 'Genre', sortable: true },
+    { key: 'isDutchLanguage', header: 'NL', sortable: true },
+    { key: 'isEnglishLanguage', header: 'EN', sortable: true },
+    { key: 'isDialogueFree', header: 'Taalloos', sortable: true },
+    { key: 'isChildFriendly', header: 'Kindvriendelijk', sortable: true },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Title', 'companyId']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+  
+  const enrichedPerformances = useMemo(() => performances.map(p => ({
+      ...p,
+      companyName: companies.find(c => c.id === p.companyId)?.Name || 'N.v.t.'
+  })), [performances, companies]);
+
+  const { filteredAndSortedItems: filteredPerformances, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+      enrichedPerformances,
+      'Title',
+      ['Title', 'companyName', 'genre']
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig]);
 
   const handleEdit = (performance) => {
     setEditingPerformance(performance);
@@ -1623,26 +1663,9 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
     setIsModalOpen(true);
   };
 
-  const filteredPerformances = useMemo(() => {
-    return performances
-        .filter(p => {
-            const company = companies.find(c => c.id === p.companyId);
-            return p.Title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                   (company && company.Name.toLowerCase().includes(searchTerm.toLowerCase()));
-        })
-        .sort((a,b) => a.Title.localeCompare(b.Title));
-  }, [performances, companies, searchTerm]);
-  
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm]);
-
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-        setSelectedIds(new Set(filteredPerformances.map(p => p.id)));
-    } else {
-        setSelectedIds(new Set());
-    }
+    if (e.target.checked) setSelectedIds(new Set(filteredPerformances.map(p => p.id)));
+    else setSelectedIds(new Set());
   };
 
   const handleSelectOne = (e, id) => {
@@ -1671,9 +1694,12 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
-      />
+        hasEditPermissions={hasEditPermissions}
+      >
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
       
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
@@ -1693,15 +1719,12 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
                   disabled={filteredPerformances.length === 0}
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titel</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gezelschap</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredPerformances.length > 0 ? filteredPerformances.map(p => {
-                const company = companies.find(c => c.id === p.companyId);
-                return (
+            {filteredPerformances.length > 0 ? filteredPerformances.map(p => (
                   <tr key={p.id} className={selectedIds.has(p.id) ? 'bg-indigo-50' : ''}>
                     <td className="px-4 py-4">
                        <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
@@ -1709,16 +1732,22 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
                         onChange={(e) => handleSelectOne(e, p.id)}
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{p.Title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{company?.Name || 'N.v.t.'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(p)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(p.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
+                    {visibleColumns.has('Title') && <td className="px-6 py-4 whitespace-nowrap font-medium">{p.Title}</td>}
+                    {visibleColumns.has('companyId') && <td className="px-6 py-4 whitespace-nowrap">{p.companyName}</td>}
+                    {visibleColumns.has('genre') && <td className="px-6 py-4 whitespace-nowrap">{p.genre}</td>}
+                    {visibleColumns.has('isDutchLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isDutchLanguage ? 'Ja' : 'Nee'}</td>}
+                    {visibleColumns.has('isEnglishLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isEnglishLanguage ? 'Ja' : 'Nee'}</td>}
+                    {visibleColumns.has('isDialogueFree') && <td className="px-6 py-4 whitespace-nowrap">{p.isDialogueFree ? 'Ja' : 'Nee'}</td>}
+                    {visibleColumns.has('isChildFriendly') && <td className="px-6 py-4 whitespace-nowrap">{p.isChildFriendly ? 'Ja' : 'Nee'}</td>}
+                    {hasEditPermissions && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button onClick={() => handleEdit(p)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                          <button onClick={() => onDelete(p.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                        </td>
+                    )}
                   </tr>
-                );
-            }) : (
-              <tr><td colSpan="4" className="text-center py-4">Geen voorstellingen gevonden.</td></tr>
+                )) : (
+              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen voorstellingen gevonden.</td></tr>
             )}
           </tbody>
         </table>
@@ -1747,6 +1776,14 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
             onImport={(data) => onBulkAdd(data.map(item => ({
                 Title: item.Title || '',
                 companyId: item.companyId || null,
+                genre: item.genre || '',
+                meerInfoUrl: item.meerInfoUrl || '',
+                imageUrl: item.imageUrl || '',
+                pwycLink: item.pwycLink || '',
+                isDutchLanguage: item.isDutchLanguage === 'true',
+                isEnglishLanguage: item.isEnglishLanguage === 'true',
+                isDialogueFree: item.isDialogueFree === 'true',
+                isChildFriendly: item.isChildFriendly === 'true',
             })))}
         />
       )}
@@ -1758,13 +1795,21 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
   const [formData, setFormData] = useState({ 
       title: performance?.Title || '', 
       companyId: performance?.companyId || '',
+      genre: performance?.genre || '',
+      meerInfoUrl: performance?.meerInfoUrl || '',
+      imageUrl: performance?.imageUrl || '',
+      pwycLink: performance?.pwycLink || '',
+      isDutchLanguage: performance?.isDutchLanguage || false,
+      isEnglishLanguage: performance?.isEnglishLanguage || false,
+      isDialogueFree: performance?.isDialogueFree || false,
+      isChildFriendly: performance?.isChildFriendly || false,
   });
   
   const sortedCompanies = useMemo(() => [...companies].sort((a,b) => a.Name.localeCompare(b.Name)), [companies]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSubmit = (e) => { 
@@ -1772,6 +1817,14 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
       onSave({ 
           Title: formData.title, 
           companyId: formData.companyId,
+          genre: formData.genre,
+          meerInfoUrl: formData.meerInfoUrl,
+          imageUrl: formData.imageUrl,
+          pwycLink: formData.pwycLink,
+          isDutchLanguage: formData.isDutchLanguage,
+          isEnglishLanguage: formData.isEnglishLanguage,
+          isDialogueFree: formData.isDialogueFree,
+          isChildFriendly: formData.isChildFriendly,
       }); 
   };
   return (
@@ -1784,6 +1837,17 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
             <option value="">Kies een gezelschap</option>
             {sortedCompanies.map(c => <option key={c.id} value={c.id}>{c.Name}</option>)}
           </select>
+          <input type="text" name="genre" value={formData.genre} onChange={handleChange} placeholder="Genre" className="w-full p-2 border rounded" />
+          <input type="url" name="meerInfoUrl" value={formData.meerInfoUrl} onChange={handleChange} placeholder="Meer Info URL" className="w-full p-2 border rounded" />
+          <input type="url" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
+          <input type="url" name="pwycLink" value={formData.pwycLink} onChange={handleChange} placeholder="PWYC Link" className="w-full p-2 border rounded" />
+          
+          <div className="grid grid-cols-2 gap-4">
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isDutchLanguage" checked={formData.isDutchLanguage} onChange={handleChange} /><span>Nederlandstalig</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isEnglishLanguage" checked={formData.isEnglishLanguage} onChange={handleChange} /><span>Engelstalig</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isDialogueFree" checked={formData.isDialogueFree} onChange={handleChange} /><span>Taalloos</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isChildFriendly" checked={formData.isChildFriendly} onChange={handleChange} /><span>Kindvriendelijk</span></label>
+          </div>
 
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
@@ -1795,15 +1859,48 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
   );
 }
 
-function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [addOwnerModalInfo, setAddOwnerModalInfo] = useState({ isOpen: false, location: null });
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true },
+    { key: 'Address', header: 'Stad', sortable: true },
+    { key: 'locationNumber', header: 'Locatienummer', sortable: true },
+    { key: 'ownerIds', header: 'Eigenaren', sortable: false },
+    { key: 'hasDining', header: 'Eetgelegenheid', sortable: true },
+    { key: 'isWheelchairAccessible', header: 'Rolstoel toegankelijk', sortable: true },
+  ], []);
 
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Name', 'Address', 'ownerIds']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+  
+  const enrichedLocations = useMemo(() => locations.map(loc => ({
+      ...loc,
+      ownerNames: (loc.ownerIds || []).map(id => cafeOwners.find(c => c.id === id)?.Name).filter(Boolean).join(', ')
+  })), [locations, cafeOwners]);
+  
+  const { filteredAndSortedItems: filteredLocations, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+      enrichedLocations,
+      'Name',
+      ['Name', 'Address', 'locationNumber', 'ownerNames']
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig]);
 
   const handleEdit = (location) => {
     setEditingLocation(location);
@@ -1823,18 +1920,10 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
     setIsModalOpen(true);
   };
 
-  const filteredLocations = useMemo(() => {
-    return locations
-      .filter(l => 
-        l.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.Address && l.Address.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-      .sort((a,b) => a.Name.localeCompare(b.Name));
-  }, [locations, searchTerm]);
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm]);
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedIds(new Set(filteredLocations.map(l => l.id)));
+    else setSelectedIds(new Set());
+  };
 
   const handleSelectOne = (e, id) => {
     const newSelectedIds = new Set(selectedIds);
@@ -1850,6 +1939,7 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
     }
   };
 
+  const isAllSelected = filteredLocations.length > 0 && selectedIds.size === filteredLocations.length;
   const countText = `Toont ${filteredLocations.length} van ${locations.length} locaties`;
 
   return (
@@ -1862,9 +1952,12 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
-      />
+        hasEditPermissions={hasEditPermissions}
+      >
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
@@ -1873,51 +1966,49 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
         </div>
       )}
 
-      <div className="space-y-4">
-        {filteredLocations.length > 0 ? filteredLocations.map(loc => {
-            const locationOwners = (loc.ownerIds || []).map(ownerId => 
-                cafeOwners.find(c => c.id === ownerId)
-            ).filter(Boolean);
-
-            return (
-              <div key={loc.id} className={`bg-white p-4 rounded-lg shadow-md transition-colors ${selectedIds.has(loc.id) ? 'border-2 border-indigo-500' : 'border border-transparent'}`}>
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex items-start gap-4 flex-grow">
-                      <input type="checkbox" className="h-5 w-5 text-indigo-600 border-gray-300 rounded mt-1"
-                          checked={selectedIds.has(loc.id)}
-                          onChange={(e) => handleSelectOne(e, loc.id)}
-                      />
-                      <div className="flex-grow">
-                        <h3 className="text-xl font-bold text-indigo-700">{loc.Name}</h3>
-                        <p className="text-gray-600 mt-1 text-sm">{loc.Address}</p>
-                      </div>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <button onClick={() => handleEdit(loc)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                    <button onClick={() => onDelete(loc.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                  </div>
-                </div>
-                <div className="mt-4 pl-9 flex justify-between items-center">
-                    <div>
-                        <h4 className="font-semibold text-base mb-2">Eigenaren</h4>
-                        <ul className="list-disc list-inside bg-gray-50 p-3 rounded-md text-sm">
-                          {locationOwners.length > 0 ? locationOwners.map(owner => (
-                            <li key={owner.id} className="text-gray-700">{owner.Name}</li>
-                          )) : <li className="text-gray-500">Nog geen eigenaren gekoppeld.</li>}
-                        </ul>
-                    </div>
-                    <button
-                        onClick={() => setAddOwnerModalInfo({ isOpen: true, location: loc })}
-                        className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 self-end flex items-center space-x-2 shadow-sm"
-                    >
-                        {icons.users}
-                        <span>Eigenaren beheren</span>
-                    </button>
-                </div>
-              </div>
-            );
-          }) : <p className="text-center py-4 bg-white rounded-lg shadow-md">Geen locaties gevonden.</p>
-        }
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left">
+                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  checked={isAllSelected}
+                  onChange={handleSelectAll}
+                  disabled={filteredLocations.length === 0}
+                />
+              </th>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredLocations.length > 0 ? filteredLocations.map(loc => (
+              <tr key={loc.id} className={selectedIds.has(loc.id) ? 'bg-indigo-50' : ''}>
+                <td className="px-4 py-4">
+                   <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    checked={selectedIds.has(loc.id)}
+                    onChange={(e) => handleSelectOne(e, loc.id)}
+                  />
+                </td>
+                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap font-medium">{loc.Name}</td>}
+                {visibleColumns.has('Address') && <td className="px-6 py-4 whitespace-nowrap">{loc.Address}</td>}
+                {visibleColumns.has('locationNumber') && <td className="px-6 py-4 whitespace-nowrap">{loc.locationNumber}</td>}
+                {visibleColumns.has('ownerIds') && <td className="px-6 py-4 whitespace-nowrap">{loc.ownerNames}</td>}
+                {visibleColumns.has('hasDining') && <td className="px-6 py-4 whitespace-nowrap">{loc.hasDining ? 'Ja' : 'Nee'}</td>}
+                {visibleColumns.has('isWheelchairAccessible') && <td className="px-6 py-4 whitespace-nowrap">{loc.isWheelchairAccessible ? 'Ja' : 'Nee'}</td>}
+                {hasEditPermissions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => setAddOwnerModalInfo({ isOpen: true, location: loc })} className="text-gray-600 hover:text-indigo-900 mr-4">{icons.users}</button>
+                      <button onClick={() => handleEdit(loc)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(loc.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                )}
+              </tr>
+            )) : (
+              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen locaties gevonden.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {isModalOpen && (
@@ -1942,12 +2033,16 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
       {isImportModalOpen && (
         <GenericImportModal
             title="Locaties"
-            requiredColumns={['Name', 'Address', 'ownerIds']}
+            requiredColumns={['Name', 'Address']}
             onClose={() => setIsImportModalOpen(false)}
             onImport={(data) => onBulkAdd(data.map(item => ({
                 Name: item.Name || '',
                 Address: item.Address || '',
-                ownerIds: item.ownerIds ? item.ownerIds.split(';').map(s => s.trim()) : []
+                ownerIds: item.ownerIds ? item.ownerIds.split(';').map(s => s.trim()) : [],
+                googleMapsUrl: item.googleMapsUrl || '',
+                locationNumber: item.locationNumber || '',
+                hasDining: item.hasDining === 'true',
+                isWheelchairAccessible: item.isWheelchairAccessible === 'true',
             })))}
         />
       )}
@@ -1966,18 +2061,25 @@ function LocationsView({ locations, cafeOwners, onAdd, onUpdate, onDelete, onBul
 function LocationForm({ location, isBulkMode, onClose, onSave, onUpdate, onSaveBulk }) {
   const [locations, setLocations] = useState(
     isBulkMode 
-      ? [{ name: '', address: '' }] 
-      : [{ name: location?.Name || '', address: location?.Address || '' }]
+      ? [{ name: '', address: '', googleMapsUrl: '', locationNumber: '', hasDining: false, isWheelchairAccessible: false }] 
+      : [{ 
+          name: location?.Name || '', 
+          address: location?.Address || '',
+          googleMapsUrl: location?.googleMapsUrl || '',
+          locationNumber: location?.locationNumber || '',
+          hasDining: location?.hasDining || false,
+          isWheelchairAccessible: location?.isWheelchairAccessible || false,
+        }]
   );
 
-  const handleLocationChange = (index, field, value) => {
+  const handleLocationChange = (index, field, value, type) => {
     const newLocations = [...locations];
-    newLocations[index][field] = value;
+    newLocations[index][field] = type === 'checkbox' ? value.target.checked : value;
     setLocations(newLocations);
   };
 
   const addLocation = () => {
-    setLocations([...locations, { name: '', address: '' }]);
+    setLocations([...locations, { name: '', address: '', googleMapsUrl: '', locationNumber: '', hasDining: false, isWheelchairAccessible: false }]);
   };
 
   const removeLocation = (index) => {
@@ -1987,17 +2089,24 @@ function LocationForm({ location, isBulkMode, onClose, onSave, onUpdate, onSaveB
 
   const handleSubmit = (e) => { 
       e.preventDefault(); 
+      const mapToSaveData = (loc) => ({
+          Name: loc.name,
+          Address: loc.address,
+          googleMapsUrl: loc.googleMapsUrl,
+          locationNumber: loc.locationNumber,
+          hasDining: loc.hasDining,
+          isWheelchairAccessible: loc.isWheelchairAccessible,
+      });
+
       if (isBulkMode) {
           const locationsToSave = locations
             .filter(loc => loc.name.trim())
-            .map(loc => ({ Name: loc.name, Address: loc.address, ownerIds: [] }));
-          if (locationsToSave.length > 0) {
-              onSaveBulk(locationsToSave);
-          }
+            .map(loc => ({ ...mapToSaveData(loc), ownerIds: [] }));
+          if (locationsToSave.length > 0) onSaveBulk(locationsToSave);
       } else if (location) {
-          onUpdate({ Name: locations[0].name, Address: locations[0].address });
+          onUpdate(mapToSaveData(locations[0]));
       } else {
-          onSave({ Name: locations[0].name, Address: locations[0].address, ownerIds: [] });
+          onSave({ ...mapToSaveData(locations[0]), ownerIds: [] });
       }
   };
   
@@ -2005,19 +2114,29 @@ function LocationForm({ location, isBulkMode, onClose, onSave, onUpdate, onSaveB
 
   return (
      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
+      <div className="bg-white rounded-lg p-8 w-full max-w-3xl shadow-xl max-h-full overflow-y-auto">
         <h3 className="text-2xl font-bold mb-6">{title}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
                 {locations.map((loc, index) => (
-                    <div key={index} className="flex items-center space-x-2 p-2 border rounded-md bg-gray-50">
-                        <input type="text" value={loc.name} onChange={(e) => handleLocationChange(index, 'name', e.target.value)} placeholder="Naam van de locatie" className="w-full p-2 border rounded" required />
-                        <input type="text" value={loc.address} onChange={(e) => handleLocationChange(index, 'address', e.target.value)} placeholder="Stad" className="w-full p-2 border rounded" />
-                        {isBulkMode && (
-                          <button type="button" onClick={() => removeLocation(index)} disabled={locations.length <= 1} className="text-red-500 hover:text-red-700 disabled:opacity-50 p-2">
-                              {icons.trash}
-                          </button>
-                        )}
+                    <div key={index} className="p-3 border rounded-md bg-gray-50 space-y-3">
+                        <div className="flex items-center space-x-2">
+                            <input type="text" value={loc.name} onChange={(e) => handleLocationChange(index, 'name', e.target.value)} placeholder="Naam van de locatie" className="w-full p-2 border rounded" required />
+                            <input type="text" value={loc.address} onChange={(e) => handleLocationChange(index, 'address', e.target.value)} placeholder="Stad" className="w-full p-2 border rounded" />
+                            {isBulkMode && (
+                              <button type="button" onClick={() => removeLocation(index)} disabled={locations.length <= 1} className="text-red-500 hover:text-red-700 disabled:opacity-50 p-2">
+                                  {icons.trash}
+                              </button>
+                            )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input type="url" value={loc.googleMapsUrl} onChange={(e) => handleLocationChange(index, 'googleMapsUrl', e.target.value)} placeholder="Google Maps URL" className="w-full p-2 border rounded" />
+                            <input type="text" value={loc.locationNumber} onChange={(e) => handleLocationChange(index, 'locationNumber', e.target.value)} placeholder="Locatienummer" className="w-1/3 p-2 border rounded" />
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <label className="flex items-center space-x-2"><input type="checkbox" checked={loc.hasDining} onChange={(e) => handleLocationChange(index, 'hasDining', e, 'checkbox')} /><span>Eetgelegenheid</span></label>
+                            <label className="flex items-center space-x-2"><input type="checkbox" checked={loc.isWheelchairAccessible} onChange={(e) => handleLocationChange(index, 'isWheelchairAccessible', e, 'checkbox')} /><span>Rolstoeltoegankelijk</span></label>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -2120,14 +2239,58 @@ function AddOwnersToLocationModal({ location, allCafeOwners, onClose, onUpdateLo
   );
 }
 
-function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete }) {
+function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete, hasEditPermissions }) {
+  const [showPast, setShowPast] = useState(false); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingExecution, setEditingExecution] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'performanceTitle', header: 'Voorstelling', sortable: true },
+    { key: 'locationName', header: 'Locatie', sortable: true },
+    { key: 'DateTime', header: 'Datum & Tijd', sortable: true },
+    { key: 'expectedCrowd', header: 'Verwachte Drukte', sortable: true },
+    { key: 'quietRoute', header: 'Rustige Route', sortable: true },
+    { key: 'hasNgt', header: 'NGT', sortable: true },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['performanceTitle', 'locationName', 'DateTime']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+
+  const enrichedExecutions = useMemo(() => {
+    const now = new Date();
+    return executions
+        .map(exec => ({
+            ...exec,
+            performanceTitle: performances.find(p => p.id === exec.performanceId)?.Title || 'Onbekend',
+            locationName: locations.find(l => l.id === exec.locationId)?.Name || 'Onbekend'
+        }))
+        // Filter op verleden, tenzij showPast true is
+        .filter(exec => showPast || new Date(exec.DateTime) >= now) 
+        .filter(exec => performanceFilter === 'all' || exec.performanceId === performanceFilter)
+        .filter(exec => locationFilter === 'all' || exec.locationId === locationFilter);
+}, [executions, performances, locations, performanceFilter, locationFilter, showPast]);
+  
+  const { filteredAndSortedItems: filteredExecutions, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+      enrichedExecutions,
+      'DateTime',
+      ['performanceTitle', 'locationName']
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, performanceFilter, locationFilter, sortConfig]);
 
   const handleEdit = (execution) => {
     setEditingExecution(execution);
@@ -2144,27 +2307,6 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
     const date = new Date(isoString);
     return date.toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' });
   };
-
-  const filteredExecutions = useMemo(() => {
-    return executions
-        .map(exec => ({
-            ...exec,
-            performance: performances.find(p => p.id === exec.performanceId),
-            location: locations.find(l => l.id === exec.locationId)
-        }))
-        .filter(exec => exec.performance && exec.location)
-        .filter(exec => performanceFilter === 'all' || exec.performanceId === performanceFilter)
-        .filter(exec => locationFilter === 'all' || exec.locationId === locationFilter)
-        .filter(exec => 
-            exec.performance.Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            exec.location.Name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a,b) => new Date(a.DateTime) - new Date(b.DateTime));
-  }, [executions, performances, locations, searchTerm, performanceFilter, locationFilter]);
-  
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm, performanceFilter, locationFilter]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(new Set(filteredExecutions.map(ex => ex.id)));
@@ -2200,6 +2342,7 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
       >
         <select value={performanceFilter} onChange={(e) => setPerformanceFilter(e.target.value)} className="p-2 border rounded-lg shadow-sm">
             <option value="all">Alle Voorstellingen</option>
@@ -2209,9 +2352,16 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
             <option value="all">Alle Locaties</option>
             {sortedLocations.map(l => <option key={l.id} value={l.id}>{l.Name}</option>)}
         </select>
+        <button 
+            onClick={() => setShowPast(!showPast)} 
+            className="p-2 border rounded-lg shadow-sm bg-white hover:bg-gray-100"
+          >
+            {showPast ? 'Verleden verbergen' : 'Verleden tonen'}
+        </button>
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
@@ -2231,10 +2381,8 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
                   disabled={filteredExecutions.length === 0}
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voorstelling</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locatie</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum & Tijd</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -2246,16 +2394,21 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
                         onChange={(e) => handleSelectOne(e, exec.id)}
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{exec.performance?.Title || 'Onbekend'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{exec.location?.Name || 'Onbekend'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatDateTime(exec.DateTime)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(exec)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(exec.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
+                    {visibleColumns.has('performanceTitle') && <td className="px-6 py-4 whitespace-nowrap font-medium">{exec.performanceTitle}</td>}
+                    {visibleColumns.has('locationName') && <td className="px-6 py-4 whitespace-nowrap">{exec.locationName}</td>}
+                    {visibleColumns.has('DateTime') && <td className="px-6 py-4 whitespace-nowrap">{formatDateTime(exec.DateTime)}</td>}
+                    {visibleColumns.has('expectedCrowd') && <td className="px-6 py-4 whitespace-nowrap">{exec.expectedCrowd}</td>}
+                    {visibleColumns.has('quietRoute') && <td className="px-6 py-4 whitespace-nowrap">{exec.quietRoute ? 'Ja' : 'Nee'}</td>}
+                    {visibleColumns.has('hasNgt') && <td className="px-6 py-4 whitespace-nowrap">{exec.hasNgt ? 'Ja' : 'Nee'}</td>}
+                    {hasEditPermissions && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button onClick={() => handleEdit(exec)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                          <button onClick={() => onDelete(exec.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                        </td>
+                    )}
                   </tr>
                 )) : (
-              <tr><td colSpan="5" className="text-center py-4">Geen uitvoeringen gevonden.</td></tr>
+              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen uitvoeringen gevonden.</td></tr>
             )}
           </tbody>
         </table>
@@ -2289,7 +2442,10 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
             onImport={(data) => onBulkAdd(data.map(item => ({
                 performanceId: item.performanceId || null,
                 locationId: item.locationId || null,
-                DateTime: item.DateTime ? new Date(item.DateTime).toISOString() : null
+                DateTime: item.DateTime ? new Date(item.DateTime).toISOString() : null,
+                expectedCrowd: item.expectedCrowd || '',
+                quietRoute: item.quietRoute === 'true',
+                hasNgt: item.hasNgt === 'true',
             })))}
         />
       )}
@@ -2305,9 +2461,19 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
       ? [{ date: new Date(execution.DateTime).toISOString().split('T')[0], time: new Date(execution.DateTime).toTimeString().slice(0, 5) }]
       : [{ date: '', time: '' }]
   );
+  const [extraData, setExtraData] = useState({
+      expectedCrowd: execution?.expectedCrowd || '',
+      quietRoute: execution?.quietRoute || false,
+      hasNgt: execution?.hasNgt || false,
+  });
   
   const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
   const sortedLocations = useMemo(() => [...locations].sort((a,b) => a.Name.localeCompare(b.Name)), [locations]);
+
+  const handleExtraDataChange = (e) => {
+      const { name, value, type, checked } = e.target;
+      setExtraData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
 
   const handleDatetimeChange = (index, field, value) => {
     const newDatetimes = [...datetimes];
@@ -2316,9 +2482,7 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
   };
 
   const addDatetime = () => {
-    const lastDatetime = datetimes[datetimes.length - 1];
-    const newDate = lastDatetime ? lastDatetime.date : '';
-    setDatetimes([...datetimes, { date: newDate, time: '' }]);
+    setDatetimes([...datetimes, { date: '', time: '' }]);
   };
 
   const removeDatetime = (index) => {
@@ -2329,11 +2493,16 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
   const handleSubmit = (e) => { 
       e.preventDefault();
       
+      const baseData = {
+          performanceId,
+          locationId,
+          ...extraData
+      };
+
       if (execution) {
         const dateTime = new Date(`${datetimes[0].date}T${datetimes[0].time}`);
         onSave({ 
-            performanceId, 
-            locationId,
+            ...baseData,
             DateTime: dateTime.toISOString()
         });
       } else {
@@ -2342,8 +2511,7 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
             .map(dt => {
                 const dateTime = new Date(`${dt.date}T${dt.time}`);
                 return {
-                    performanceId,
-                    locationId,
+                    ...baseData,
                     DateTime: dateTime.toISOString()
                 };
             });
@@ -2369,6 +2537,7 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
           </select>
           
           <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Datum & Tijd</label>
             {datetimes.map((dt, index) => (
                 <div key={index} className="flex items-center space-x-2">
                     <input type="date" value={dt.date} onChange={(e) => handleDatetimeChange(index, 'date', e.target.value)} className="w-full p-2 border rounded" required />
@@ -2387,6 +2556,12 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
             </button>
           )}
 
+          <input type="text" name="expectedCrowd" value={extraData.expectedCrowd} onChange={handleExtraDataChange} placeholder="Verwachte drukte" className="w-full p-2 border rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center space-x-2"><input type="checkbox" name="quietRoute" checked={extraData.quietRoute} onChange={handleExtraDataChange} /><span>Rustige Route</span></label>
+            <label className="flex items-center space-x-2"><input type="checkbox" name="hasNgt" checked={extraData.hasNgt} onChange={handleExtraDataChange} /><span>NGT</span></label>
+          </div>
+
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
@@ -2397,13 +2572,46 @@ function ExecutionForm({ execution, performances, locations, onClose, onSave, on
   );
 }
 
-function EventsView({ events, executions, performances, locations, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete }) {
+function EventsView({ events, executions, performances, locations, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [manageExecutionsModalInfo, setManageExecutionsModalInfo] = useState({ isOpen: false, event: null });
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true },
+    { key: 'gage', header: 'Gage', sortable: true },
+    { key: 'executionCount', header: 'Aantal Uitvoeringen', sortable: false },
+    { key: 'sponsorLogoUrl', header: 'Sponsor Logo', sortable: false },
+    { key: 'mapUrl', header: 'Kaart URL', sortable: false },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Name', 'gage', 'executionCount']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+
+  const enrichedEvents = useMemo(() => events.map(e => ({
+      ...e,
+      executionCount: e.executionIds?.length || 0
+  })), [events]);
+  
+  const { filteredAndSortedItems: filteredEvents, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+      enrichedEvents,
+      'Name',
+      ['Name']
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig]);
 
   const handleEdit = (event) => {
     setEditingEvent(event);
@@ -2414,16 +2622,6 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
     setEditingEvent(null);
     setIsModalOpen(true);
   };
-
-  const filteredEvents = useMemo(() => {
-    return events
-      .filter(e => e.Name.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a,b) => a.Name.localeCompare(b.Name));
-  }, [events, searchTerm]);
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(new Set(filteredEvents.map(ev => ev.id)));
@@ -2456,9 +2654,12 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
         onImport={() => setIsImportModalOpen(true)}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
-      />
+        hasEditPermissions={hasEditPermissions}
+      >
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
       
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
             <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
             <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
@@ -2478,10 +2679,8 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
                   disabled={filteredEvents.length === 0}
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gage</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aantal Uitvoeringen</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -2493,17 +2692,21 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
                     onChange={(e) => handleSelectOne(e, event.id)}
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">{event.Name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">€{event.gage || '0'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{event.executionIds?.length || 0}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => setManageExecutionsModalInfo({isOpen: true, event: event})} className="text-gray-600 hover:text-indigo-900 mr-4">{icons.calendar}</button>
-                  <button onClick={() => handleEdit(event)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                  <button onClick={() => onDelete(event.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                </td>
+                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap font-medium">{event.Name}</td>}
+                {visibleColumns.has('gage') && <td className="px-6 py-4 whitespace-nowrap">€{event.gage || 0}</td>}
+                {visibleColumns.has('executionCount') && <td className="px-6 py-4 whitespace-nowrap">{event.executionCount}</td>}
+                {visibleColumns.has('sponsorLogoUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.sponsorLogoUrl}</td>}
+                {visibleColumns.has('mapUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.mapUrl}</td>}
+                {hasEditPermissions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => setManageExecutionsModalInfo({isOpen: true, event: event})} className="text-gray-600 hover:text-indigo-900 mr-4">{icons.calendar}</button>
+                      <button onClick={() => handleEdit(event)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(event.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                )}
               </tr>
             )) : (
-              <tr><td colSpan="5" className="text-center py-4">Geen events gevonden.</td></tr>
+              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen events gevonden.</td></tr>
             )}
           </tbody>
         </table>
@@ -2526,12 +2729,14 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
       {isImportModalOpen && (
         <GenericImportModal
             title="Events"
-            requiredColumns={['Name', 'executionIds', 'gage']}
+            requiredColumns={['Name', 'gage']}
             onClose={() => setIsImportModalOpen(false)}
             onImport={(data) => onBulkAdd(data.map(item => ({
                 Name: item.Name || '',
                 executionIds: item.executionIds ? item.executionIds.split(';').map(s => s.trim()) : [],
-                gage: item.gage || '0',
+                gage: String(item.gage || '0'),
+                sponsorLogoUrl: item.sponsorLogoUrl || '',
+                mapUrl: item.mapUrl || '',
             })))}
         />
       )}
@@ -2552,11 +2757,13 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
 function EventForm({ event, onClose, onSave }) {
   const [formData, setFormData] = useState({
       name: event?.Name || '',
-      gage: event?.gage || '0',
+      gage: event?.gage || 0,
+      sponsorLogoUrl: event?.sponsorLogoUrl || '',
+      mapUrl: event?.mapUrl || '',
   });
   
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     setFormData(prev => ({
         ...prev,
         [name]: value
@@ -2567,7 +2774,9 @@ function EventForm({ event, onClose, onSave }) {
     e.preventDefault(); 
     onSave({ 
         Name: formData.name, 
-        gage: String(formData.gage),
+        gage: String(formData.gage || '0'),
+        sponsorLogoUrl: formData.sponsorLogoUrl,
+        mapUrl: formData.mapUrl,
         executionIds: event?.executionIds || [] 
     }); 
   };
@@ -2584,6 +2793,8 @@ function EventForm({ event, onClose, onSave }) {
                 <input type="text" name="gage" value={formData.gage} onChange={handleChange} placeholder="0.00" className="w-full p-2 pl-7 border rounded" required />
             </div>
           </div>
+          <input type="url" name="sponsorLogoUrl" value={formData.sponsorLogoUrl} onChange={handleChange} placeholder="URL Logo Hoofdsponsor" className="w-full p-2 border rounded" />
+          <input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} placeholder="URL Kaart" className="w-full p-2 border rounded" />
           <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
@@ -2928,8 +3139,7 @@ Date: [current_date]                                                Date:
 Signature:                                                          Signature:
 `;
 
-
-function ContractGenerator({ artists, companies, performances, events, executions, showNotification }) {
+function ContractGenerator({ contacts, companies, performances, events, executions, showNotification }) {
   const [selectedPerformanceId, setSelectedPerformanceId] = useState('');
   const [contractText, setContractText] = useState('');
   const [language, setLanguage] = useState('nl');
@@ -2992,15 +3202,13 @@ function ContractGenerator({ artists, companies, performances, events, execution
     const totalCalculatedGage = playerCount * totalGageFromEvents;
 
     const companyPlayerIds = new Set(company.playerIds || []);
-    const companyNonPlayerIds = new Set(company.nonPlayerIds || []);
-    const allMemberIds = new Set([...companyPlayerIds, ...companyNonPlayerIds, company.contactPersonId]);
-    const companyArtists = artists.filter(a => allMemberIds.has(a.id));
+    const allMemberIds = new Set([...companyPlayerIds, company.contactPersonId].filter(Boolean));
+    const companyArtists = contacts.filter(c => allMemberIds.has(c.id));
 
     const artistListString = companyArtists
         .map(a => {
             let role = '';
             if (companyPlayerIds.has(a.id)) role = language === 'nl' ? ', speler' : ', performer';
-            else if (companyNonPlayerIds.has(a.id)) role = language === 'nl' ? ', niet-speler' : ', non-performer';
             return `${a.Name}${role}`;
         })
         .join('\n');
@@ -3158,6 +3366,94 @@ function ContractGenerator({ artists, companies, performances, events, execution
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function TeamView({ showNotification }) {
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTeamMembers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await functions.createExecution('688f79e8003158b79b93', '{}', false); // Vervang 'listUsers' door je functie-ID
+      const data = JSON.parse(response.response);
+      if (data.users) {
+        // Filter alleen gebruikers met een @cafetheaterfestival.nl e-mail
+        const ctfUsers = data.users.filter(user => user.email.endsWith('@cafetheaterfestival.nl'));
+        setTeamMembers(ctfUsers);
+      } else {
+        throw new Error(data.message || 'Kon teamleden niet ophalen.');
+      }
+    } catch (error) {
+      console.error('Fout bij ophalen teamleden:', error);
+      showNotification(`Fout: ${error.message}`, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await functions.createExecution(
+        '688f7a01000843a8542d', // Vervang 'updateUserRole' door je functie-ID
+        JSON.stringify({ userId, role: newRole }),
+        false
+      );
+      showNotification('Rol succesvol bijgewerkt!');
+      // Refresh de lijst om de wijziging te zien
+      fetchTeamMembers();
+    } catch (error) {
+      console.error('Fout bij bijwerken rol:', error);
+      showNotification(`Fout bij bijwerken rol: ${error.message}`, 'error');
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">Team Beheer</h2>
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {isLoading ? (
+              <tr><td colSpan="3" className="text-center py-4">Teamleden laden...</td></tr>
+            ) : teamMembers.length > 0 ? teamMembers.map(member => (
+              <tr key={member.$id}>
+                <td className="px-6 py-4 whitespace-nowrap">{member.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{member.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {member.email === SUPER_ADMIN_EMAIL ? (
+                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Super Admin</span>
+                  ) : (
+                    <select
+                      value={member.prefs.role || 'viewer'}
+                      onChange={(e) => handleRoleChange(member.$id, e.target.value)}
+                      className="p-1 border rounded-md"
+                    >
+                      <option value="viewer">Viewer</option>
+                      <option value="editor">Editor</option>
+                    </select>
+                  )}
+                </td>
+              </tr>
+            )) : (
+              <tr><td colSpan="3" className="text-center py-4">Geen teamleden gevonden.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
