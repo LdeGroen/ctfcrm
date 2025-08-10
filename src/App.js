@@ -522,7 +522,16 @@ function CrmApp({ user, onLogout }) {
           )}
 
           {loadingData && <div className="text-center p-10">Data laden...</div>}
-          
+
+          {!loadingData && activeView === 'volunteers' && 
+            <VolunteersView 
+              contacts={contacts} 
+              onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_CONTACTS_ID, data)} // <-- VOEG DEZE TOE
+              onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_CONTACTS_ID, id, data)}
+              onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_CONTACTS_ID, id)}
+              hasEditPermissions={hasEditPermissions}
+            />}
+            
           {!loadingData && activeView === 'contacts' && 
             <ContactsView 
               contacts={contacts} 
@@ -655,16 +664,16 @@ function CrmApp({ user, onLogout }) {
 function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, onClose }) {
   const navItems = [
     { id: 'contacts', label: 'Contacten', icon: icons.users, visible: true },
+    // NIEUW ITEM HIERONDER
+    { id: 'volunteers', label: 'Vrijwilligers', icon: icons.star, visible: true }, 
     { id: 'companies', label: 'Gezelschappen', icon: icons.briefcase, visible: true },
     { id: 'performances', label: 'Voorstellingen', icon: icons.film, visible: true },
     { id: 'executions', label: 'Uitvoeringen', icon: icons.calendar, visible: true },
     { id: 'locations', label: 'Locaties', icon: icons.mapPin, visible: true },
     { id: 'events', label: 'Events', icon: icons.star, visible: true },
-    // Nieuwe Navigatie Items
     { id: 'info', label: 'Info', icon: icons.info, visible: true },
     { id: 'news', label: 'Nieuws', icon: icons.news, visible: true },
     { id: 'accessibility', label: 'Toegankelijkheid', icon: icons.accessibility, visible: true },
-    // Einde nieuwe items
     { id: 'schedule', label: 'Blokkenschema', icon: icons.grid, visible: true },
     { id: 'contract', label: 'Contract Generator', icon: icons.fileText, visible: true },
     { id: 'team', label: 'Team', icon: icons.settings, visible: user.role === 'super_admin' },
@@ -1104,6 +1113,7 @@ const SortableTh = ({ column, sortConfig, requestSort }) => {
 
 // --- Views ---
 
+
 function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -1111,6 +1121,12 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   const [editingContact, setEditingContact] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   
+  // BELANGRIJKE WIJZIGING: Filter vrijwilligers uit de lijst
+  const nonVolunteers = useMemo(() => 
+    contacts.filter(c => (c.Role || '').toLowerCase() !== 'vrijwilliger'),
+    [contacts]
+  );
+
   const initialFilters = { Role: 'all', functie: 'all', isCurrentlyEmployed: 'all' };
 
   const { 
@@ -1121,17 +1137,17 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
     requestSort,
     filters,
     handleFilterChange
-  } = useSortAndFilter(contacts, 'Name', ['Name', 'Email', 'Phone', 'Role', 'functie'], initialFilters);
+  } = useSortAndFilter(nonVolunteers, 'Name', ['Name', 'Email', 'Phone', 'Role', 'functie'], initialFilters);
 
   const roles = useMemo(() => {
-    const roleSet = new Set(contacts.map(c => (c.Role || '').trim().toLowerCase()).filter(Boolean));
+    const roleSet = new Set(nonVolunteers.map(c => (c.Role || '').trim().toLowerCase()).filter(Boolean));
     return Array.from(roleSet).sort();
-  }, [contacts]);
+  }, [nonVolunteers]);
 
   const functies = useMemo(() => {
-    const functieSet = new Set(contacts.flatMap(c => c.functie || []).filter(Boolean));
+    const functieSet = new Set(nonVolunteers.flatMap(c => c.functie || []).filter(Boolean));
     return Array.from(functieSet).sort();
-  }, [contacts]);
+  }, [nonVolunteers]);
 
   const ALL_COLUMNS = useMemo(() => [
     { key: 'Name', header: 'Naam', sortable: true },
@@ -1199,7 +1215,7 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   };
 
   const isAllSelected = filteredAndSortedContacts.length > 0 && selectedIds.size === filteredAndSortedContacts.length;
-  const countText = `Toont ${filteredAndSortedContacts.length} van ${contacts.length} contacten`;
+  const countText = `Toont ${filteredAndSortedContacts.length} van ${nonVolunteers.length} contacten (excl. vrijwilligers)`;
 
   return (
     <div>
@@ -1326,13 +1342,16 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
                 Notes: item.Notes || '',
                 isCurrentlyEmployed: item.isCurrentlyEmployed === 'true',
                 yearsActive: item.yearsActive ? item.yearsActive.split(';').map(s => s.trim()) : [],
-                functie: item.functie ? [item.functie] : [],
+                functie: item.functie ? item.functie.split(';').map(f => f.trim()) : [],
+                pronouns: item.pronouns || '',
+                shirtSize: item.shirtSize || '',
             })))}
         />
       )}
     </div>
   );
 }
+
 
 function ContactForm({ contact, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -1344,8 +1363,11 @@ function ContactForm({ contact, onClose, onSave }) {
     notes: contact?.Notes || '',
     isCurrentlyEmployed: contact?.isCurrentlyEmployed || false,
     yearsActive: new Set(contact?.yearsActive || []),
-    // Pak de eerste functie uit de array, aangezien we maar één functie-veld hebben.
-    functie: (contact?.functie && Array.isArray(contact.functie) && contact.functie.length > 0) ? contact.functie[0] : '',
+    // Functies als comma-separated string voor het input veld
+    functie: (contact?.functie || []).join(', '),
+    // Nieuwe velden voor vrijwilligers
+    pronouns: contact?.pronouns || '',
+    shirtSize: contact?.shirtSize || '',
   });
   const [showMoreYears, setShowMoreYears] = useState(false);
 
@@ -1373,11 +1395,8 @@ function ContactForm({ contact, onClose, onSave }) {
     e.preventDefault();
     const standardizedRole = formData.role.trim().toLowerCase();
     
-    // Bereid 'functie' voor: moet een array zijn als er een waarde is.
-    let functieForAppwrite = [];
-    if (['teamlid', 'artiest', 'vrijwilliger'].includes(standardizedRole) && formData.functie.trim()) {
-        functieForAppwrite = [formData.functie.trim()];
-    }
+    // Converteer de functie-string terug naar een array
+    const functieForAppwrite = formData.functie.split(',').map(f => f.trim()).filter(Boolean);
 
     const dataForAppwrite = {
         Name: formData.name,
@@ -1389,6 +1408,9 @@ function ContactForm({ contact, onClose, onSave }) {
         isCurrentlyEmployed: standardizedRole === 'teamlid' ? formData.isCurrentlyEmployed : false,
         yearsActive: Array.from(formData.yearsActive),
         functie: functieForAppwrite,
+        // Sla de nieuwe velden alleen op als de rol 'vrijwilliger' is
+        pronouns: standardizedRole === 'vrijwilliger' ? formData.pronouns : null,
+        shirtSize: standardizedRole === 'vrijwilliger' ? formData.shirtSize : null,
     };
     onSave(dataForAppwrite);
   };
@@ -1399,15 +1421,32 @@ function ContactForm({ contact, onClose, onSave }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold">{contact ? 'Contact Bewerken' : 'Nieuw Contact'}</h3>
+          <h3 className="text-2xl font-bold">{contact?.id ? 'Contact Bewerken' : 'Nieuw Contact'}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Volledige naam" className="w-full p-2 border rounded" required />
           <input type="text" name="role" value={formData.role} onChange={handleChange} placeholder="Rol (bv. artiest, vrijwilliger)" className="w-full p-2 border rounded" required />
           
+          {/* Toon Functie veld voor relevante rollen */}
           {['teamlid', 'artiest', 'vrijwilliger'].includes(standardizedRole) && (
-             <input type="text" name="functie" value={formData.functie} onChange={handleChange} placeholder="Functie (bv. productieleider, acteur)" className="w-full p-2 border rounded" />
+             <input type="text" name="functie" value={formData.functie} onChange={handleChange} placeholder="Functie(s), gescheiden door komma's" className="w-full p-2 border rounded" />
+          )}
+
+          {/* NIEUWE VELDEN (alleen voor vrijwilligers) */}
+          {standardizedRole === 'vrijwilliger' && (
+            <div className="p-4 border border-indigo-200 rounded-lg bg-indigo-50 space-y-4">
+                <h4 className="font-semibold text-indigo-800">Vrijwilliger Details</h4>
+                <input type="text" name="pronouns" value={formData.pronouns} onChange={handleChange} placeholder="Gewenste voornaamwoorden" className="w-full p-2 border rounded" />
+                <select name="shirtSize" value={formData.shirtSize} onChange={handleChange} className="w-full p-2 border rounded">
+                    <option value="">Kies shirtmaat...</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="XXL">XXL</option>
+                </select>
+            </div>
           )}
 
           {standardizedRole === 'teamlid' && (
@@ -4373,5 +4412,98 @@ function ToegankelijkheidForm({ item, onClose, onSave }) {
   );
 }
 
+
+function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
+
+  // 1. Filter de contacten om alleen vrijwilligers te krijgen.
+  const volunteers = useMemo(() => 
+    contacts.filter(c => (c.Role || '').toLowerCase() === 'vrijwilliger'), 
+    [contacts]
+  );
+  
+  const { 
+    filteredAndSortedItems: filteredVolunteers, 
+    searchTerm, 
+    setSearchTerm 
+  } = useSortAndFilter(volunteers, 'Name', ['Name', 'Email', 'functie']);
+
+  const handleEdit = (contact) => {
+    setEditingContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    // Vooraf ingestelde rol voor een nieuwe vrijwilliger
+    setEditingContact({ Role: 'vrijwilliger' });
+    setIsModalOpen(true);
+  };
+
+  const countText = `Toont ${filteredVolunteers.length} van ${volunteers.length} vrijwilligers`;
+
+  return (
+    <div>
+      <ViewHeader
+        title="Vrijwilligers"
+        countText={countText}
+        onAddNew={handleAddNew}
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredVolunteers.length > 0 ? filteredVolunteers.map(volunteer => (
+          <div key={volunteer.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col">
+            <div className="p-6 flex-grow">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-xl font-bold text-indigo-600">{volunteer.Name?.charAt(0) || '?'}</span>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg leading-6 font-bold text-gray-900">{volunteer.Name}</h3>
+                  <p className="text-sm text-gray-500">{volunteer.pronouns || ''}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3 text-sm text-gray-700">
+                <p><strong>Functie(s):</strong> {(volunteer.functie || []).join(', ') || 'N/A'}</p>
+                <p><strong>Email:</strong> {volunteer.Email || 'N/A'}</p>
+                <p><strong>Telefoon:</strong> {volunteer.Phone || 'N/A'}</p>
+                <p><strong>Adres:</strong> {volunteer.Adress || 'N/A'}</p>
+                <p><strong>Shirtmaat:</strong> {volunteer.shirtSize || 'N/A'}</p>
+              </div>
+            </div>
+            {hasEditPermissions && (
+              <div className="p-4 bg-gray-50 flex justify-end space-x-2">
+                <button onClick={() => handleEdit(volunteer)} className="text-indigo-600 hover:text-indigo-900 p-2">{icons.edit}</button>
+                <button onClick={() => onDelete(volunteer.id)} className="text-red-600 hover:text-red-900 p-2">{icons.trash}</button>
+              </div>
+            )}
+          </div>
+        )) : (
+          <p className="col-span-full text-center py-10">Geen vrijwilligers gevonden.</p>
+        )}
+      </div>
+
+      {isModalOpen && (
+        <ContactForm 
+          key={editingContact ? editingContact.id : 'new-volunteer'}
+          contact={editingContact} 
+          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            if (editingContact && editingContact.id) {
+              onUpdate(editingContact.id, data);
+            } else {
+              onAdd(data); // <-- DIT WERKT NU
+            }
+            setIsModalOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
 export default App;

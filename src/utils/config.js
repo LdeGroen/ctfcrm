@@ -1,0 +1,16 @@
+// --- Appwrite Configuratie ---
+export const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
+export const APPWRITE_PROJECT_ID = '6874f0b40015fc341b14';
+export const APPWRITE_DATABASE_ID = '68873afd0015cc5075e5';
+export const APPWRITE_COLLECTION_CONTACTS_ID = '68873b53001cd7a02043';
+export const APPWRITE_COLLECTION_COMPANIES_ID = '68873b5f0032519e7321';
+export const APPWRITE_COLLECTION_PERFORMANCES_ID = '68873b6500074288e73d';
+export const APPWRITE_COLLECTION_LOCATIONS_ID = '68878ee7000cb07ef9e7';
+export const APPWRITE_COLLECTION_EXECUTIONS_ID = '68878f2d0020be3a7efd';
+export const APPWRITE_COLLECTION_EVENTS_ID = '688798900022cbda4ec0';
+export const APPWRITE_COLLECTION_INFO_ID = '68945b4f000e7c3880cb';
+export const APPWRITE_COLLECTION_NEWS_ID = '68948a4b002d7cda6919';
+export const APPWRITE_COLLECTION_ACCESSIBILITY_ID = '6894d367002bf2645148';
+
+// --- Super Admin Configuratie ---
+export const SUPER_ADMIN_EMAIL = 'luc@cafetheaterfestival.nl';
