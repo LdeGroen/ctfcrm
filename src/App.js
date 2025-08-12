@@ -16,6 +16,7 @@ const APPWRITE_COLLECTION_EVENTS_ID = '688798900022cbda4ec0'; // Vervang dit
 const APPWRITE_COLLECTION_INFO_ID = '68945b4f000e7c3880cb';
 const APPWRITE_COLLECTION_NEWS_ID = '68948a4b002d7cda6919';
 const APPWRITE_COLLECTION_ACCESSIBILITY_ID = '6894d367002bf2645148';
+const APPWRITE_COLLECTION_VEILIGHEID_ID = '6899f3390009b108e10f';
 
 
 // --- Initialiseer Appwrite Client ---
@@ -44,6 +45,7 @@ const icons = {
   star: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   grid: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 3v18"/></svg>,
   upload: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+  download: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
   search: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" x2="16.65" y1="21" y2="16.65"></line></svg>,
   save: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
   menu: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
@@ -60,6 +62,8 @@ const icons = {
   phone: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>,
   mail: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>,
   clock: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
+  shield: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
+  filter: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>,
 };
 
 // --- Helper: Functie om speciale tekens te escapen voor RegExp ---
@@ -98,6 +102,61 @@ const fetchAllDocuments = async (collectionId) => {
         }
     }
 };
+
+// --- Helper: Functie om data naar CSV te exporteren ---
+const exportToCsv = (filename, rows) => {
+    if (!rows || rows.length === 0) {
+        // Gebruik een custom modal of notificatie i.p.v. alert
+        console.warn("Geen data om te exporteren.");
+        // showNotification("Geen data om te exporteren.", "warning"); // Idealiter
+        return;
+    }
+
+    const processRow = (row) => {
+        let finalVal = '';
+        for (let j = 0; j < row.length; j++) {
+            let innerValue = row[j] === null || row[j] === undefined ? '' : String(row[j]);
+            if (typeof innerValue === 'string' && innerValue.includes(',')) {
+                // Omhul waarde met dubbele aanhalingstekens als er een komma in zit
+                innerValue = `"${innerValue.replace(/"/g, '""')}"`;
+            }
+            if (j > 0) {
+                finalVal += ',';
+            }
+            finalVal += innerValue;
+        }
+        return finalVal + '\n';
+    };
+
+    let csvFile = '';
+    // Verwijder interne Appwrite velden en complexe objecten voor een schonere export
+    const headers = Object.keys(rows[0]).filter(key => !key.startsWith('$') && typeof rows[0][key] !== 'object');
+    csvFile += processRow(headers);
+
+    for (let i = 0; i < rows.length; i++) {
+        const values = headers.map(header => {
+            const value = rows[i][header];
+            if (Array.isArray(value)) {
+                return value.join(';'); // Voeg arrays samen met een puntkomma
+            }
+            return value;
+        });
+        csvFile += processRow(values);
+    }
+
+    const blob = new Blob([`\uFEFF${csvFile}`], { type: 'text/csv;charset=utf-8;' }); // BOM toevoegen voor Excel compatibiliteit
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+};
+
 
 // --- Custom Hook voor Dropdown functionaliteit ---
 function useDropdown() {
@@ -148,7 +207,7 @@ function useSortAndFilter(items, initialSortKey, searchKeys = [], initialFilters
             filtered = filtered.filter(item => {
                 const itemValue = item[key];
                 if (typeof itemValue === 'boolean') {
-                    return (value === 'yes' && itemValue === true) || (value === 'no' && itemValue === false);
+                    return (String(value).toLowerCase() === 'ja' && itemValue === true) || (String(value).toLowerCase() === 'nee' && itemValue === false);
                 }
                 // Handle array values (like 'functie')
                 if (Array.isArray(itemValue)) {
@@ -306,13 +365,13 @@ function CrmApp({ user, onLogout }) {
   const [infoItems, setInfoItems] = useState([]);
   const [nieuwsItems, setNieuwsItems] = useState([]);
   const [toegankelijkheidItems, settoegankelijkheidItems] = useState([]);
+  const [veiligheidItems, setVeiligheidItems] = useState([]);
 
   const [loadingData, setLoadingData] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   
-  // NIEUW: State voor de Quick View Modal
   const [quickViewItem, setQuickViewItem] = useState(null); // { item: {}, type: 'contact' }
 
   const showNotification = (message, type = 'success') => {
@@ -340,6 +399,7 @@ function CrmApp({ user, onLogout }) {
       info: { id: APPWRITE_COLLECTION_INFO_ID, setter: setInfoItems },
       news: { id: APPWRITE_COLLECTION_NEWS_ID, setter: setNieuwsItems },
       accessibility: { id: APPWRITE_COLLECTION_ACCESSIBILITY_ID, setter: settoegankelijkheidItems },
+      veiligheid: { id: APPWRITE_COLLECTION_VEILIGHEID_ID, setter: setVeiligheidItems },
     };
 
     const fetchInitialData = async () => {
@@ -471,7 +531,6 @@ function CrmApp({ user, onLogout }) {
   
   const hasEditPermissions = user.role === 'editor' || user.role === 'super_admin';
 
-  // NIEUW: Bundel alle data voor de Quick View
   const allData = { contacts, companies, performances, locations };
 
   return (
@@ -511,7 +570,6 @@ function CrmApp({ user, onLogout }) {
           {notification.show && <Notification message={notification.message} type={notification.type} />}
           {confirmModal.show && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={hideConfirm} />}
           
-          {/* NIEUW: Render de Quick View Modal */}
           {quickViewItem && (
             <QuickViewModal
                 initialItem={quickViewItem.item}
@@ -526,7 +584,7 @@ function CrmApp({ user, onLogout }) {
           {!loadingData && activeView === 'volunteers' && 
             <VolunteersView 
               contacts={contacts} 
-              onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_CONTACTS_ID, data)} // <-- VOEG DEZE TOE
+              onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_CONTACTS_ID, data)}
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_CONTACTS_ID, id, data)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_CONTACTS_ID, id)}
               hasEditPermissions={hasEditPermissions}
@@ -634,6 +692,12 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_ACCESSIBILITY_ID, id)}
               hasEditPermissions={hasEditPermissions}
             />}
+          {!loadingData && activeView === 'veiligheid' && hasEditPermissions &&
+            <VeiligheidView
+              veiligheidItems={veiligheidItems}
+              onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_VEILIGHEID_ID, id)}
+              userRole={user.role}
+            />}
           {!loadingData && activeView === 'schedule' && 
             <ScheduleView 
               events={events}
@@ -652,9 +716,6 @@ function CrmApp({ user, onLogout }) {
               executions={executions}
               showNotification={showNotification}
             />}
-          {!loadingData && activeView === 'team' && user.role === 'super_admin' &&
-            <TeamView showNotification={showNotification} />
-          }
         </main>
       </div>
     </div>
@@ -662,9 +723,10 @@ function CrmApp({ user, onLogout }) {
 }
 
 function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, onClose }) {
+  const hasEditPermissions = user.role === 'editor' || user.role === 'super_admin';
+  
   const navItems = [
     { id: 'contacts', label: 'Contacten', icon: icons.users, visible: true },
-    // NIEUW ITEM HIERONDER
     { id: 'volunteers', label: 'Vrijwilligers', icon: icons.star, visible: true }, 
     { id: 'companies', label: 'Gezelschappen', icon: icons.briefcase, visible: true },
     { id: 'performances', label: 'Voorstellingen', icon: icons.film, visible: true },
@@ -676,7 +738,7 @@ function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, 
     { id: 'accessibility', label: 'Toegankelijkheid', icon: icons.accessibility, visible: true },
     { id: 'schedule', label: 'Blokkenschema', icon: icons.grid, visible: true },
     { id: 'contract', label: 'Contract Generator', icon: icons.fileText, visible: true },
-    { id: 'team', label: 'Team', icon: icons.settings, visible: user.role === 'super_admin' },
+    { id: 'veiligheid', label: 'Veiligheid', icon: icons.shield, visible: hasEditPermissions },
   ];
 
   return (
@@ -936,7 +998,7 @@ function FilterDropdown({ label, name, value, onChange, options }) {
     );
 }
 
-function ViewHeader({ title, countText, onAddNew, onImport, onSearch, searchTerm, children, hasEditPermissions }) {
+function ViewHeader({ title, countText, onAddNew, onImport, onExport, onSearch, searchTerm, children, hasEditPermissions }) {
     return (
         <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm pt-4 pb-4 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-gray-200">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -946,6 +1008,10 @@ function ViewHeader({ title, countText, onAddNew, onImport, onSearch, searchTerm
                 </div>
                 {hasEditPermissions && (
                     <div className="flex space-x-2">
+                        {onExport && <button onClick={onExport} className="bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 flex items-center space-x-2">
+                            {icons.download}
+                            <span>Exporteren</span>
+                        </button>}
                         {onImport && <button onClick={onImport} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center space-x-2">
                             {icons.upload}
                             <span>Importeren</span>
@@ -1094,25 +1160,161 @@ function GenericImportModal({ onClose, onImport, requiredColumns, title, complex
     );
 }
 
-const SortableTh = ({ column, sortConfig, requestSort }) => {
+function SortableTh({ column, sortConfig, requestSort, filters, handleFilterChange, allItems }) {
+    const { isOpen, toggle, close, dropdownRef } = useDropdown();
     const isSorted = sortConfig.key === column.key;
+
+    const filterValue = filters[column.key] || 'all';
+
+    const uniqueValues = useMemo(() => {
+        if (!column.filterable) return [];
+        const values = new Set();
+        const isBooleanColumn = allItems.some(item => typeof item[column.key] === 'boolean');
+
+        if (isBooleanColumn) {
+            return ['Ja', 'Nee'];
+        }
+
+        allItems.forEach(item => {
+            const value = item[column.key];
+            if (Array.isArray(value)) {
+                value.forEach(v => v && values.add(v));
+            } else if (value !== null && value !== undefined && value !== '') {
+                values.add(String(value));
+            }
+        });
+        return Array.from(values).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+    }, [allItems, column.key, column.filterable]);
+
+    const handleFilterSelect = (value) => {
+        handleFilterChange(column.key, value);
+        close();
+    };
+
     return (
-        <th 
-            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-            onClick={() => column.sortable && requestSort(column.key)}
-        >
-            <div className="flex items-center space-x-1">
-                <span>{column.header}</span>
-                {column.sortable && isSorted && (
-                    <span>{sortConfig.direction === 'ascending' ? icons.sortAsc : icons.sortDesc}</span>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="flex items-center justify-between">
+                <div 
+                    className="flex items-center space-x-1 cursor-pointer group"
+                    onClick={() => column.sortable && requestSort(column.key)}
+                >
+                    <span className="group-hover:text-gray-900">{column.header}</span>
+                    {column.sortable && (
+                        isSorted ? (
+                            <span>{sortConfig.direction === 'ascending' ? icons.sortAsc : icons.sortDesc}</span>
+                        ) : (
+                           <span className="text-gray-300 group-hover:text-gray-500">{icons.sortAsc}</span>
+                        )
+                    )}
+                </div>
+                {column.filterable && uniqueValues.length > 0 && (
+                    <div className="relative" ref={dropdownRef}>
+                        <button onClick={toggle} className={`ml-2 p-1 rounded-full ${filterValue !== 'all' ? 'bg-indigo-200 text-indigo-800' : 'text-gray-400 hover:bg-gray-200'}`}>
+                           <div className="w-4 h-4">{icons.filter}</div>
+                        </button>
+                        {isOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-xl z-20">
+                                <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
+                                    <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
+                                        <input type="radio" name={`${column.key}-filter`} value="all" checked={filterValue === 'all'} onChange={() => handleFilterSelect('all')} className="h-4 w-4 text-indigo-600 border-gray-300"/>
+                                        <span className="font-semibold">Alles</span>
+                                    </label>
+                                    {uniqueValues.map(value => (
+                                        <label key={value} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
+                                            <input type="radio" name={`${column.key}-filter`} value={value} checked={filterValue === value} onChange={() => handleFilterSelect(value)} className="h-4 w-4 text-indigo-600 border-gray-300"/>
+                                            <span>{value}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </th>
     );
 };
 
-// --- Views ---
+// --- NIEUWE VIEW ---
+function VeiligheidView({ veiligheidItems, onDelete, userRole }) {
+  const { 
+    filteredAndSortedItems, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(
+      veiligheidItems,
+      'Naam', // Sorteer standaard op naam
+      ['Naam', 'Telefoonnummer', 'Email', 'Event'] // Velden om op te zoeken
+  );
 
+  const columns = [
+    { key: 'Naam', header: 'Naam', sortable: true, filterable: true },
+    { key: 'Telefoonnummer', header: 'Telefoonnummer', sortable: false, filterable: false },
+    { key: 'Email', header: 'Email', sortable: true, filterable: true },
+    { key: 'Event', header: 'Wat is er gebeurd?', sortable: false, filterable: false },
+    { key: 'Contact', header: 'Mogen we contact opnemen?', sortable: true, filterable: true },
+  ];
+
+  const countText = `Toont ${filteredAndSortedItems.length} van ${veiligheidItems.length} meldingen`;
+
+  return (
+    <div>
+      <ViewHeader
+        title="Veiligheidsmeldingen"
+        countText={countText}
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={userRole === 'editor' || userRole === 'super_admin'}
+      />
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map(col => 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={veiligheidItems}
+                />
+              )}
+              {userRole === 'super_admin' && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredAndSortedItems.length > 0 ? filteredAndSortedItems.map(item => (
+              <tr key={item.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{item.Naam}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{item.Telefoonnummer}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{item.Email}</td>
+                <td className="px-6 py-4 whitespace-normal max-w-md">{item.Event}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.Contact ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {item.Contact ? 'Ja' : 'Nee'}
+                  </span>
+                </td>
+                {userRole === 'super_admin' && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                )}
+              </tr>
+            )) : (
+              <tr><td colSpan={columns.length + (userRole === 'super_admin' ? 1 : 0)} className="text-center py-4">Geen veiligheidsmeldingen gevonden.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1121,13 +1323,10 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   const [editingContact, setEditingContact] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   
-  // BELANGRIJKE WIJZIGING: Filter vrijwilligers uit de lijst
   const nonVolunteers = useMemo(() => 
     contacts.filter(c => (c.Role || '').toLowerCase() !== 'vrijwilliger'),
     [contacts]
   );
-
-  const initialFilters = { Role: 'all', functie: 'all', isCurrentlyEmployed: 'all' };
 
   const { 
     filteredAndSortedItems: filteredAndSortedContacts, 
@@ -1137,26 +1336,16 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
     requestSort,
     filters,
     handleFilterChange
-  } = useSortAndFilter(nonVolunteers, 'Name', ['Name', 'Email', 'Phone', 'Role', 'functie'], initialFilters);
-
-  const roles = useMemo(() => {
-    const roleSet = new Set(nonVolunteers.map(c => (c.Role || '').trim().toLowerCase()).filter(Boolean));
-    return Array.from(roleSet).sort();
-  }, [nonVolunteers]);
-
-  const functies = useMemo(() => {
-    const functieSet = new Set(nonVolunteers.flatMap(c => c.functie || []).filter(Boolean));
-    return Array.from(functieSet).sort();
-  }, [nonVolunteers]);
+  } = useSortAndFilter(nonVolunteers, 'Name', ['Name', 'Email', 'Phone', 'Role', 'functie']);
 
   const ALL_COLUMNS = useMemo(() => [
-    { key: 'Name', header: 'Naam', sortable: true },
-    { key: 'Role', header: 'Rol', sortable: true },
-    { key: 'functie', header: 'Functie', sortable: true },
-    { key: 'yearsActive', header: 'Actieve Jaren', sortable: false },
-    { key: 'isCurrentlyEmployed', header: 'Actief?', sortable: true },
-    { key: 'Email', header: 'Email', sortable: true },
-    { key: 'Phone', header: 'Telefoon', sortable: true },
+    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'Role', header: 'Rol', sortable: true, filterable: true },
+    { key: 'functie', header: 'Functie', sortable: true, filterable: true },
+    { key: 'yearsActive', header: 'Actieve Jaren', sortable: false, filterable: false },
+    { key: 'isCurrentlyEmployed', header: 'Actief?', sortable: true, filterable: true },
+    { key: 'Email', header: 'Email', sortable: true, filterable: true },
+    { key: 'Phone', header: 'Telefoon', sortable: true, filterable: false },
   ], []);
 
   const [visibleColumns, setVisibleColumns] = useState(new Set(ALL_COLUMNS.map(c => c.key).filter(k => k !== 'yearsActive')));
@@ -1213,6 +1402,10 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
     setIsBulkEditModalOpen(false);
     setSelectedIds(new Set());
   };
+  
+  const handleExport = () => {
+    exportToCsv('contacten_export.csv', filteredAndSortedContacts);
+  };
 
   const isAllSelected = filteredAndSortedContacts.length > 0 && selectedIds.size === filteredAndSortedContacts.length;
   const countText = `Toont ${filteredAndSortedContacts.length} van ${nonVolunteers.length} contacten (excl. vrijwilligers)`;
@@ -1224,28 +1417,13 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         countText={countText}
         onAddNew={handleAddNew}
         onImport={() => setIsImportModalOpen(true)}
+        onExport={handleExport}
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
         hasEditPermissions={hasEditPermissions}
       >
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
-      
-      <FilterBar>
-          <FilterDropdown label="Rol" name="Role" value={filters.Role} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Alle Rollen' },
-              ...roles.map(role => ({ value: role, label: role.charAt(0).toUpperCase() + role.slice(1) }))
-          ]} />
-          <FilterDropdown label="Functie" name="functie" value={filters.functie} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Alle Functies' },
-              ...functies.map(f => ({ value: f, label: f }))
-          ]} />
-          <FilterDropdown label="Actief?" name="isCurrentlyEmployed" value={filters.isCurrentlyEmployed} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Beide' },
-              { value: 'yes', label: 'Ja' },
-              { value: 'no', label: 'Nee' },
-          ]} />
-      </FilterBar>
 
       {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
@@ -1272,7 +1450,17 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
                   disabled={filteredAndSortedContacts.length === 0}
                 />
               </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={nonVolunteers}
+                />
+              )}
               {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
@@ -1325,7 +1513,7 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         <BulkEditContactForm
             onClose={() => setIsBulkEditModalOpen(false)}
             onSave={handleBulkUpdate}
-            roles={roles}
+            roles={Array.from(new Set(nonVolunteers.map(c => c.Role).filter(Boolean)))}
         />
       )}
       {isImportModalOpen && (
@@ -1363,9 +1551,7 @@ function ContactForm({ contact, onClose, onSave }) {
     notes: contact?.Notes || '',
     isCurrentlyEmployed: contact?.isCurrentlyEmployed || false,
     yearsActive: new Set(contact?.yearsActive || []),
-    // Functies als comma-separated string voor het input veld
     functie: (contact?.functie || []).join(', '),
-    // Nieuwe velden voor vrijwilligers
     pronouns: contact?.pronouns || '',
     shirtSize: contact?.shirtSize || '',
   });
@@ -1395,7 +1581,6 @@ function ContactForm({ contact, onClose, onSave }) {
     e.preventDefault();
     const standardizedRole = formData.role.trim().toLowerCase();
     
-    // Converteer de functie-string terug naar een array
     const functieForAppwrite = formData.functie.split(',').map(f => f.trim()).filter(Boolean);
 
     const dataForAppwrite = {
@@ -1408,7 +1593,6 @@ function ContactForm({ contact, onClose, onSave }) {
         isCurrentlyEmployed: standardizedRole === 'teamlid' ? formData.isCurrentlyEmployed : false,
         yearsActive: Array.from(formData.yearsActive),
         functie: functieForAppwrite,
-        // Sla de nieuwe velden alleen op als de rol 'vrijwilliger' is
         pronouns: standardizedRole === 'vrijwilliger' ? formData.pronouns : null,
         shirtSize: standardizedRole === 'vrijwilliger' ? formData.shirtSize : null,
     };
@@ -1428,12 +1612,10 @@ function ContactForm({ contact, onClose, onSave }) {
           <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Volledige naam" className="w-full p-2 border rounded" required />
           <input type="text" name="role" value={formData.role} onChange={handleChange} placeholder="Rol (bv. artiest, vrijwilliger)" className="w-full p-2 border rounded" required />
           
-          {/* Toon Functie veld voor relevante rollen */}
           {['teamlid', 'artiest', 'vrijwilliger'].includes(standardizedRole) && (
              <input type="text" name="functie" value={formData.functie} onChange={handleChange} placeholder="Functie(s), gescheiden door komma's" className="w-full p-2 border rounded" />
           )}
 
-          {/* NIEUWE VELDEN (alleen voor vrijwilligers) */}
           {standardizedRole === 'vrijwilliger' && (
             <div className="p-4 border border-indigo-200 rounded-lg bg-indigo-50 space-y-4">
                 <h4 className="font-semibold text-indigo-800">Vrijwilliger Details</h4>
@@ -1521,7 +1703,6 @@ function BulkEditContactForm({ onClose, onSave, roles }) {
         for (const key in fieldsToUpdate) {
             if (fieldsToUpdate[key]) {
                  if (key === 'functie') {
-                    // Zorg ervoor dat functie een array is
                     dataToUpdate[key] = formData[key] ? [formData[key]] : [];
                 } else {
                     dataToUpdate[key] = formData[key];
@@ -1590,333 +1771,323 @@ function BulkEditContactForm({ onClose, onSave, roles }) {
 }
 
 
-// --- ANDERE VIEWS BLIJVEN HIER (onveranderd) ---
-function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [addArtistModalInfo, setAddArtistModalInfo] = useState({ isOpen: false, company: null });
-  
-  const filteredCompanies = useMemo(() => {
-    return companies
-      .filter(c => 
-        c.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.Description && c.Description.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-      .sort((a,b) => a.Name.localeCompare(b.Name));
-  }, [companies, searchTerm]);
+function HospitalityModal({ company, onClose }) {
+    if (!company) return null;
 
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm]);
-
-  const handleEdit = (company) => {
-    setEditingCompany(company);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingCompany(null);
-    setIsModalOpen(true);
-  };
-  
-  const handleSelectOne = (e, id) => {
-    const newSelectedIds = new Set(selectedIds);
-    if (e.target.checked) {
-        newSelectedIds.add(id);
-    } else {
-        newSelectedIds.delete(id);
-    }
-    setSelectedIds(newSelectedIds);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.size > 0) {
-      onBulkDelete(Array.from(selectedIds));
-      setSelectedIds(new Set());
-    }
-  };
-  
-  const countText = `Toont ${filteredCompanies.length} van ${companies.length} gezelschappen`;
-
-  return (
-    <div>
-      <ViewHeader 
-        title="Gezelschappen"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onImport={() => setIsImportModalOpen(true)}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-
-      {selectedIds.size > 0 && hasEditPermissions && (
-        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
-            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                {icons.trash} <span>Verwijderen</span>
-            </button>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {filteredCompanies.length > 0 ? filteredCompanies.map(company => {
-          const companyPlayerIds = new Set(company.playerIds || []);
-          const companyArtists = artists.filter(a => companyPlayerIds.has(a.id) || a.id === company.contactPersonId);
-          
-          return (
-            <div key={company.id} className={`bg-white p-4 rounded-lg shadow-md transition-colors ${selectedIds.has(company.id) ? 'border-2 border-indigo-500' : 'border border-transparent'}`}>
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex items-start gap-4 flex-grow">
-                    <input type="checkbox" className="h-5 w-5 text-indigo-600 border-gray-300 rounded mt-1"
-                        checked={selectedIds.has(company.id)}
-                        onChange={(e) => handleSelectOne(e, company.id)}
-                    />
-                    <div className="flex-grow">
-                      <h3 className="text-xl font-bold text-indigo-700">{company.Name}</h3>
-                      <p className="text-gray-600 mt-1 text-sm">{company.Description}</p>
-                    </div>
-                </div>
-                {hasEditPermissions && (
-                    <div className="flex-shrink-0">
-                      <button onClick={() => handleEdit(company)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(company.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </div>
-                )}
-              </div>
-              <div className="mt-4 pl-9 flex justify-between items-center">
-                  <div>
-                      <h4 className="font-semibold text-base mb-2">Artiesten ({companyArtists.length})</h4>
-                      <div className="bg-gray-50 p-3 rounded-md text-sm">
-                          {companyArtists.length > 0 ? companyArtists.map((artist, index) => (
-                              <React.Fragment key={artist.id}>
-                                <button onClick={() => onQuickView({ item: artist, type: 'contact' })} className="text-indigo-600 hover:underline">
-                                    {artist.Name}
-                                </button>
-                                {index < companyArtists.length - 1 && ', '}
-                              </React.Fragment>
-                          )) : <span className="text-gray-500">Nog geen artiesten gekoppeld.</span>}
-                      </div>
-                  </div>
-                  {hasEditPermissions && (
-                      <button
-                          onClick={() => setAddArtistModalInfo({ isOpen: true, company: company })}
-                          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 self-end flex items-center space-x-2 shadow-sm"
-                      >
-                          {icons.users}
-                          <span>Artiesten beheren</span>
-                      </button>
-                  )}
-              </div>
-            </div>
-          );
-        }) : <p className="text-center py-4 bg-white rounded-lg shadow-md">Geen gezelschappen gevonden.</p>}
-      </div>
-      
-      {isModalOpen && <CompanyForm company={editingCompany} onClose={() => setIsModalOpen(false)} onSave={(data) => { if (editingCompany) { onUpdate(editingCompany.id, data); } else { onAdd(data); } setIsModalOpen(false); }} />}
-      {isImportModalOpen && (
-        <GenericImportModal
-            title="Gezelschappen"
-            requiredColumns={['Name', 'Description', 'playerIds', 'contactPersonId']}
-            onClose={() => setIsImportModalOpen(false)}
-            onImport={(data) => onBulkAdd(data.map(item => ({
-                Name: item.Name || '',
-                Description: item.Description || '',
-                playerIds: item.playerIds ? item.playerIds.split(';').map(s => s.trim()) : [],
-                contactPersonId: item.contactPersonId || null,
-            })))}
-        />
-      )}
-      {addArtistModalInfo.isOpen && (
-        <AddArtistsToCompanyModal
-          company={addArtistModalInfo.company}
-          allArtists={artists}
-          onClose={() => setAddArtistModalInfo({ isOpen: false, company: null })}
-          onUpdateCompany={onUpdate}
-        />
-      )}
-    </div>
-  );
-}
-
-function CompanyForm({ company, onClose, onSave }) {
-  const [formData, setFormData] = useState({ name: company?.Name || '', description: company?.Description || '' });
-  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  const handleSubmit = (e) => { 
-    e.preventDefault(); 
-    const dataToSave = { 
-        Name: formData.name, 
-        Description: formData.description,
-        playerIds: company?.playerIds || [],
-        contactPersonId: company?.contactPersonId || null,
+    const renderList = (items) => {
+        if (!items || items.length === 0) return <span className="text-gray-500">N.v.t.</span>;
+        return (
+            <ul className="list-disc list-inside">
+                {items.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+        );
     };
-    onSave(dataToSave); 
-  };
-  return (
-     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-        <h3 className="text-2xl font-bold mb-6">{company ? 'Gezelschap Bewerken' : 'Nieuw Gezelschap'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Naam van het gezelschap" className="w-full p-2 border rounded" required />
-          <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Beschrijving" className="w-full p-2 border rounded h-24"></textarea>
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
-function ViewCompanyArtistsModal({ artists, companyName, onClose }) {
+    const details = [
+        { label: "Aantal personen makersdag", value: company.AantalPersonenMakersdag || '0' },
+        { label: "Namen personen makersdag", value: renderList(company.NamenMakersdag) },
+        { label: "Aantal personen kick-off (ochtend)", value: company.AantalPersonenOchtendKickOff || '0' },
+        { label: "Namen kick-off (ochtend)", value: renderList(company.NamenOchtendKickOff) },
+        { label: "Aantal personen kick-off (middag)", value: company.AantalPersonenMiddagKickOff || '0' },
+        { label: "Namen kick-off (middag)", value: renderList(company.NamenMiddagKickOff) },
+        { label: "Aantal personen overnachting", value: company.OvernachtingPersonen || '0' },
+        { label: "Namen overnachting", value: renderList(company.NamenOvernachting) },
+        { label: "Namen catering", value: renderList(company.NamenCatering) },
+        { label: "Dieetwensen", value: company.DieetWensen || <span className="text-gray-500">Geen</span> },
+    ];
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold">Artiesten van "{companyName}"</h3>
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-2xl font-bold mb-6">Hospitality & Makersdagen: {company.Name}</h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
                 </div>
-                <div className="flex-grow overflow-y-auto -mx-4 px-4 space-y-4">
-                    {artists.length > 0 ? artists.map(artist => (
-                        <div key={artist.id} className="p-4 border rounded-lg bg-gray-50">
-                            <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-bold text-lg">{artist.Name}</h4>
-                                <CopyToClipboardButton textToCopy={artist.Name} />
-                            </div>
-                            <div className="text-sm space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">{artist.Email || 'Geen email'}</span>
-                                    {artist.Email && <CopyToClipboardButton textToCopy={artist.Email} />}
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">{artist.Phone || 'Geen telefoon'}</span>
-                                    {artist.Phone && <CopyToClipboardButton textToCopy={artist.Phone} />}
-                                </div>
-                            </div>
+                <dl className="space-y-4">
+                    {details.map(({ label, value }) => (
+                        <div key={label} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <dt className="font-semibold text-gray-600">{label}</dt>
+                            <dd className="md:col-span-2 text-gray-800">{value}</dd>
                         </div>
-                    )) : <p className="text-center text-gray-500">Geen artiesten in dit gezelschap.</p>}
-                </div>
-                <div className="flex justify-end pt-6">
-                    <button onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Sluiten</button>
-                </div>
+                    ))}
+                </dl>
             </div>
         </div>
     );
 }
 
-function AddArtistsToCompanyModal({ company, allArtists, onClose, onUpdateCompany }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [playerIds, setPlayerIds] = useState(() => new Set(company.playerIds || []));
-  const [contactPersonId, setContactPersonId] = useState(company.contactPersonId || null);
-  const [isSaving, setIsSaving] = useState(false);
+function TechniqueModal({ company, onClose }) {
+    if (!company) return null;
 
-  const filteredArtists = useMemo(() => {
-    return allArtists
-      .filter(a => a.Name.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a,b) => a.Name.localeCompare(b.Name));
-  }, [allArtists, searchTerm]);
+    const wishes = company.Techniek || [];
 
-  const handleTogglePlayer = (artistId) => {
-    const newPlayerIds = new Set(playerIds);
-    if (newPlayerIds.has(artistId)) {
-      newPlayerIds.delete(artistId);
-    } else {
-      newPlayerIds.add(artistId);
-    }
-    setPlayerIds(newPlayerIds);
-  };
-
-  const handleSetContactPerson = (artistId) => {
-    setContactPersonId(artistId);
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-        await onUpdateCompany(company.id, {
-            playerIds: Array.from(playerIds),
-            contactPersonId: contactPersonId,
-        });
-    } catch (e) {
-        console.error("Fout bij bijwerken artiesten:", e);
-    } finally {
-        setIsSaving(false);
-        onClose();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-3xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-bold">Artiesten beheren voor "{company.Name}"</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-2xl font-bold mb-6">Techniekwensen: {company.Name}</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
+                </div>
+                {wishes.length > 0 ? (
+                    <div className="flex flex-wrap gap-3">
+                        {wishes.map((wish, index) => (
+                            <span key={index} className="bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full">
+                                {wish}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-gray-500">Geen specifieke techniekwensen opgegeven.</p>
+                )}
+            </div>
         </div>
-        
-        <div className="relative mb-4">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">{icons.search}</span>
-          <input
-              type="text"
-              placeholder="Zoek artiest..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 pl-10 border rounded-lg"
-          />
-        </div>
-
-        <div className="flex-grow overflow-y-auto border rounded-lg p-2">
-            <table className="w-full">
-                <thead className="sticky top-0 bg-gray-50 z-10">
-                    <tr>
-                        <th className="p-3 text-left text-sm font-semibold text-gray-600">Artiest</th>
-                        <th className="p-3 text-center text-sm font-semibold text-gray-600 w-28">Speler</th>
-                        <th className="p-3 text-center text-sm font-semibold text-gray-600 w-32">Contactpersoon</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredArtists.length > 0 ? filteredArtists.map(artist => (
-                        <tr key={artist.id} className="hover:bg-gray-50 border-b">
-                            <td className="p-3 text-gray-800">{artist.Name}</td>
-                            <td className="p-3 text-center">
-                                <input 
-                                    type="checkbox"
-                                    checked={playerIds.has(artist.id)}
-                                    onChange={() => handleTogglePlayer(artist.id)}
-                                    className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                />
-                            </td>
-                            <td className="p-3 text-center">
-                                <input 
-                                    type="radio"
-                                    name="contactPerson"
-                                    checked={contactPersonId === artist.id}
-                                    onChange={() => handleSetContactPerson(artist.id)}
-                                    className="h-5 w-5 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                                />
-                            </td>
-                        </tr>
-                    )) : (
-                        <tr><td colSpan="3" className="text-center text-gray-500 p-4">Geen artiesten gevonden.</td></tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
-
-        <div className="flex justify-end space-x-4 pt-6">
-          <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annuleren</button>
-          <button type="button" onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">
-            {isSaving ? 'Opslaan...' : 'Opslaan'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
+
+function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [editingCompany, setEditingCompany] = useState(null);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [hospitalityModalCompany, setHospitalityModalCompany] = useState(null);
+    const [techniqueModalCompany, setTechniqueModalCompany] = useState(null);
+
+    const companiesWithDetails = useMemo(() => {
+        return companies.map(comp => {
+            const contactPerson = artists.find(a => a.id === comp.contactPersonId);
+            const players = (comp.playerIds || []).map(id => artists.find(a => a.id === id)).filter(Boolean);
+            return { ...comp, contactPerson, players, contactPersonName: contactPerson?.Name || '' };
+        });
+    }, [companies, artists]);
+
+    const { 
+        filteredAndSortedItems, 
+        searchTerm, 
+        setSearchTerm, 
+        sortConfig, 
+        requestSort,
+        filters,
+        handleFilterChange
+    } = useSortAndFilter(
+        companiesWithDetails,
+        'Name',
+        ['Name', 'contactPersonName', 'Description']
+    );
+
+    const columns = [
+        { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+        { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
+        { key: 'players', header: 'Spelers', sortable: false, filterable: false },
+        { key: 'Description', header: 'Beschrijving', sortable: false, filterable: false },
+    ];
+
+    const handleEdit = (company) => {
+        setEditingCompany(company);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingCompany(null);
+        setIsModalOpen(true);
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(filteredAndSortedItems.map(c => c.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+    
+    const handleSelectOne = (e, id) => {
+        const newSelectedIds = new Set(selectedIds);
+        if (e.target.checked) newSelectedIds.add(id);
+        else newSelectedIds.delete(id);
+        setSelectedIds(newSelectedIds);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.size > 0) {
+          onBulkDelete(Array.from(selectedIds));
+          setSelectedIds(new Set());
+        }
+    };
+    
+    const handleImport = (data) => {
+        const formattedData = data.map(item => ({
+            ...item,
+            playerIds: item.playerIds ? item.playerIds.split(';').map(id => id.trim()) : [],
+        }));
+        onBulkAdd(formattedData);
+    };
+
+    const countText = `Toont ${filteredAndSortedItems.length} van ${companies.length} gezelschappen.`;
+    const isAllSelected = filteredAndSortedItems.length > 0 && selectedIds.size === filteredAndSortedItems.length;
+
+    return (
+        <div>
+            <ViewHeader
+                title="Gezelschappen"
+                countText={countText}
+                onAddNew={handleAddNew}
+                onImport={() => setIsImportModalOpen(true)}
+                onSearch={setSearchTerm}
+                searchTerm={searchTerm}
+                hasEditPermissions={hasEditPermissions}
+            />
+            {selectedIds.size > 0 && hasEditPermissions && (
+                <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+                    <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+                    <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                        {icons.trash} <span>Verwijderen</span>
+                    </button>
+                </div>
+            )}
+            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3">
+                                <input type="checkbox" 
+                                    onChange={handleSelectAll} 
+                                    checked={isAllSelected}
+                                    disabled={filteredAndSortedItems.length === 0}
+                                />
+                            </th>
+                            {columns.map(col => 
+                                <SortableTh 
+                                    key={col.key} 
+                                    column={col} 
+                                    sortConfig={sortConfig} 
+                                    requestSort={requestSort}
+                                    filters={filters}
+                                    handleFilterChange={handleFilterChange}
+                                    allItems={companiesWithDetails}
+                                />
+                            )}
+                            {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredAndSortedItems.map(company => (
+                            <tr key={company.id} className={selectedIds.has(company.id) ? 'bg-indigo-50' : ''}>
+                                <td className="px-6 py-4">
+                                    <input type="checkbox" 
+                                        checked={selectedIds.has(company.id)} 
+                                        onChange={(e) => handleSelectOne(e, company.id)} 
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{company.Name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                                    {company.contactPerson ? (
+                                        <button onClick={() => onQuickView({ item: company.contactPerson, type: 'contact' })} className="text-indigo-600 hover:underline">{company.contactPerson.Name}</button>
+                                    ) : 'N.v.t.'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">{company.players.length}</td>
+                                <td className="px-6 py-4 text-gray-500 truncate max-w-xs">{company.Description}</td>
+                                {hasEditPermissions && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                        <button onClick={() => setHospitalityModalCompany(company)} title="Hospitality" className="text-green-600 hover:text-green-900 p-1">{icons.users}</button>
+                                        <button onClick={() => setTechniqueModalCompany(company)} title="Techniek" className="text-blue-600 hover:text-blue-900 p-1">{icons.settings}</button>
+                                        <button onClick={() => handleEdit(company)} title="Bewerken" className="text-indigo-600 hover:text-indigo-900 p-1">{icons.edit}</button>
+                                        <button onClick={() => onDelete(company.id)} title="Verwijderen" className="text-red-600 hover:text-red-900 p-1">{icons.trash}</button>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {isModalOpen && (
+                <CompanyForm
+                    company={editingCompany}
+                    artists={artists}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={(data) => {
+                        if (editingCompany) onUpdate(editingCompany.id, data);
+                        else onAdd(data);
+                        setIsModalOpen(false);
+                    }}
+                />
+            )}
+            {isImportModalOpen && (
+                <GenericImportModal 
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImport={handleImport}
+                    requiredColumns={['Name']}
+                    title="Gezelschappen"
+                />
+            )}
+            {hospitalityModalCompany && <HospitalityModal company={hospitalityModalCompany} onClose={() => setHospitalityModalCompany(null)} />}
+            {techniqueModalCompany && <TechniqueModal company={techniqueModalCompany} onClose={() => setTechniqueModalCompany(null)} />}
+        </div>
+    );
+}
+
+function CompanyForm({ company, artists, onClose, onSave }) {
+    const [formData, setFormData] = useState({
+        Name: company?.Name || '',
+        Description: company?.Description || '',
+        contactPersonId: company?.contactPersonId || '',
+        playerIds: company?.playerIds || [],
+    });
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePlayerChange = (playerId) => {
+        setFormData(prev => {
+            const newPlayerIds = prev.playerIds.includes(playerId)
+                ? prev.playerIds.filter(id => id !== playerId)
+                : [...prev.playerIds, playerId];
+            return { ...prev, playerIds: newPlayerIds };
+        });
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    const sortedArtists = useMemo(() => [...artists].sort((a,b) => a.Name.localeCompare(b.Name)), [artists]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
+                <h3 className="text-2xl font-bold mb-6">{company ? 'Gezelschap Bewerken' : 'Nieuw Gezelschap'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van het gezelschap" className="w-full p-2 border rounded" required />
+                    <textarea name="Description" value={formData.Description} onChange={handleChange} placeholder="Korte beschrijving" className="w-full p-2 border rounded h-24"></textarea>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon</label>
+                        <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
+                            <option value="">Selecteer een contactpersoon</option>
+                            {sortedArtists.map(artist => <option key={artist.id} value={artist.id}>{artist.Name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Selecteer Spelers</label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 border rounded-lg p-4 max-h-60 overflow-y-auto">
+                            {sortedArtists.map(artist => (
+                                <label key={artist.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
+                                    <input type="checkbox" checked={formData.playerIds.includes(artist.id)} onChange={() => handlePlayerChange(artist.id)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                    <span>{artist.Name}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
 
 function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1924,16 +2095,9 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
   const [editingPerformance, setEditingPerformance] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   
-  const initialFilters = {
-    genre: 'all',
-    isDutchLanguage: 'all',
-    isEnglishLanguage: 'all',
-    isDialogueFree: 'all',
-    isChildFriendly: 'all',
-  };
-  
   const enrichedPerformances = useMemo(() => performances.map(p => ({
       ...p,
+      companyName: (companies.find(c => c.id === p.companyId) || {}).Name || '',
       company: companies.find(c => c.id === p.companyId) || null
   })), [performances, companies]);
   
@@ -1945,24 +2109,19 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
     requestSort,
     filters,
     handleFilterChange
-  } = useSortAndFilter(enrichedPerformances, 'Title', ['Title', 'company.Name', 'genre'], initialFilters);
-
-  const genres = useMemo(() => {
-    const genreSet = new Set(performances.map(p => p.genre).filter(Boolean));
-    return Array.from(genreSet).sort();
-  }, [performances]);
+  } = useSortAndFilter(enrichedPerformances, 'Title', ['Title', 'companyName', 'genre']);
 
   const ALL_COLUMNS = useMemo(() => [
-    { key: 'Title', header: 'Titel', sortable: true },
-    { key: 'companyName', header: 'Gezelschap', sortable: true },
-    { key: 'genre', header: 'Genre', sortable: true },
-    { key: 'isDutchLanguage', header: 'NL', sortable: true },
-    { key: 'isEnglishLanguage', header: 'EN', sortable: true },
-    { key: 'isDialogueFree', header: 'Taalloos', sortable: true },
-    { key: 'isChildFriendly', header: 'Kindvriendelijk', sortable: true },
+    { key: 'Title', header: 'Titel', sortable: true, filterable: true },
+    { key: 'companyName', header: 'Gezelschap', sortable: true, filterable: true },
+    { key: 'genre', header: 'Genre', sortable: true, filterable: true },
+    { key: 'isDutchLanguage', header: 'NL', sortable: true, filterable: true },
+    { key: 'isEnglishLanguage', header: 'EN', sortable: true, filterable: true },
+    { key: 'isDialogueFree', header: 'Taalloos', sortable: true, filterable: true },
+    { key: 'isChildFriendly', header: 'Kindvriendelijk', sortable: true, filterable: true },
   ], []);
 
-  const [visibleColumns, setVisibleColumns] = useState(new Set(['Title', 'companyName']));
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Title', 'companyName', 'genre']));
 
   const toggleColumn = (key) => {
     setVisibleColumns(prev => {
@@ -2009,12 +2168,6 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
   const isAllSelected = filteredPerformances.length > 0 && selectedIds.size === filteredPerformances.length;
   const countText = `Toont ${filteredPerformances.length} van ${performances.length} voorstellingen`;
   
-  const booleanFilterOptions = [
-    { value: 'all', label: 'Alle' },
-    { value: 'yes', label: 'Ja' },
-    { value: 'no', label: 'Nee' },
-  ];
-
   return (
     <div>
       <ViewHeader
@@ -2028,17 +2181,6 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
       >
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
-      
-      <FilterBar>
-        <FilterDropdown label="Genre" name="genre" value={filters.genre} onChange={handleFilterChange} options={[
-            { value: 'all', label: 'Alle Genres' },
-            ...genres.map(g => ({ value: g, label: g }))
-        ]} />
-        <FilterDropdown label="Nederlandstalig" name="isDutchLanguage" value={filters.isDutchLanguage} onChange={handleFilterChange} options={booleanFilterOptions} />
-        <FilterDropdown label="Engelstalig" name="isEnglishLanguage" value={filters.isEnglishLanguage} onChange={handleFilterChange} options={booleanFilterOptions} />
-        <FilterDropdown label="Taalloos" name="isDialogueFree" value={filters.isDialogueFree} onChange={handleFilterChange} options={booleanFilterOptions} />
-        <FilterDropdown label="Kindvriendelijk" name="isChildFriendly" value={filters.isChildFriendly} onChange={handleFilterChange} options={booleanFilterOptions} />
-      </FilterBar>
       
       {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
@@ -2060,7 +2202,17 @@ function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, 
                   disabled={filteredPerformances.length === 0}
                 />
               </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={enrichedPerformances}
+                />
+              )}
               {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
@@ -2205,28 +2357,21 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
     </div>
   );
 }
-
 function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [detailLocation, setDetailLocation] = useState(null);
-  
-  const initialFilters = {
-    terras: 'all',
-    kleedruimte: 'all',
-    isWheelchairAccessible: 'all',
-    kan_groep_mee_eten: 'all',
-    hasDining: 'all',
-  };
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const enrichedLocations = useMemo(() => locations.map(loc => {
       const contactPerson = cafeOwners.find(c => c.id === loc.contactPersonId);
       return {
         ...loc,
         ownerNames: (loc.ownerIds || []).map(id => cafeOwners.find(c => c.id === id)?.Name).filter(Boolean).join(', '),
-        contactPerson: contactPerson || null
+        contactPerson: contactPerson || null,
+        contactPersonName: contactPerson?.Name || ''
       }
   }), [locations, cafeOwners]);
   
@@ -2241,9 +2386,21 @@ function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, o
   } = useSortAndFilter(
       enrichedLocations,
       'Name',
-      ['Name', 'Address', 'locationNumber', 'ownerNames', 'contactPerson.Name'],
-      initialFilters
+      ['Name', 'Address', 'locationNumber', 'ownerNames', 'contactPersonName']
   );
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'Address', header: 'Adres', sortable: true, filterable: true },
+    { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
+    { key: 'terras', header: 'Terras', sortable: true, filterable: true },
+    { key: 'kleedruimte', header: 'Kleedruimte', sortable: true, filterable: true },
+    { key: 'isWheelchairAccessible', header: 'Rolstoel', sortable: true, filterable: true },
+  ], []);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig, filters]);
 
   const handleShowDetails = (location) => {
     setDetailLocation(location);
@@ -2261,13 +2418,27 @@ function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, o
     setIsFormModalOpen(true);
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedIds(new Set(filteredLocations.map(l => l.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const handleSelectOne = (e, id) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (e.target.checked) newSelectedIds.add(id);
+    else newSelectedIds.delete(id);
+    setSelectedIds(newSelectedIds);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+
+  const isAllSelected = filteredLocations.length > 0 && selectedIds.size === filteredLocations.length;
   const countText = `Toont ${filteredLocations.length} van ${locations.length} locaties`;
-  
-  const booleanFilterOptions = [
-    { value: 'all', label: 'Alle' },
-    { value: 'yes', label: 'Ja' },
-    { value: 'no', label: 'Nee' },
-  ];
 
   return (
     <div>
@@ -2281,20 +2452,66 @@ function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, o
         hasEditPermissions={hasEditPermissions}
       />
       
-      <FilterBar>
-          <FilterDropdown label="Terras" name="terras" value={filters.terras} onChange={handleFilterChange} options={booleanFilterOptions} />
-          <FilterDropdown label="Kleedruimte" name="kleedruimte" value={filters.kleedruimte} onChange={handleFilterChange} options={booleanFilterOptions} />
-          <FilterDropdown label="Rolstoeltoegankelijk" name="isWheelchairAccessible" value={filters.isWheelchairAccessible} onChange={handleFilterChange} options={booleanFilterOptions} />
-          <FilterDropdown label="Groep kan mee-eten" name="kan_groep_mee_eten" value={filters.kan_groep_mee_eten} onChange={handleFilterChange} options={booleanFilterOptions} />
-          <FilterDropdown label="Eetgelegenheid" name="hasDining" value={filters.hasDining} onChange={handleFilterChange} options={booleanFilterOptions} />
-      </FilterBar>
+      {selectedIds.size > 0 && hasEditPermissions && (
+        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                {icons.trash} <span>Verwijderen</span>
+            </button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredLocations.length > 0 ? filteredLocations.map(loc => (
-          <LocationCard key={loc.id} location={loc} onClick={() => handleShowDetails(loc)} />
-        )) : (
-          <p className="col-span-full text-center py-10">Geen locaties gevonden.</p>
-        )}
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3">
+                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  checked={isAllSelected}
+                  onChange={handleSelectAll}
+                  disabled={filteredLocations.length === 0}
+                />
+              </th>
+              {ALL_COLUMNS.map(col => 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={enrichedLocations}
+                />
+              )}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredLocations.map(loc => (
+              <tr key={loc.id} className={selectedIds.has(loc.id) ? 'bg-indigo-50' : ''}>
+                <td className="px-4 py-4">
+                  <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    checked={selectedIds.has(loc.id)}
+                    onChange={(e) => handleSelectOne(e, loc.id)}
+                  />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium">{loc.Name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{loc.Address}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{loc.contactPersonName}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{loc.terras ? 'Ja' : 'Nee'}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{loc.kleedruimte ? 'Ja' : 'Nee'}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{loc.isWheelchairAccessible ? 'Ja' : 'Nee'}</td>
+                {hasEditPermissions && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button onClick={() => handleShowDetails(loc)} className="text-gray-600 hover:text-indigo-900 mr-4">Details</button>
+                    <button onClick={() => handleEdit(loc)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                    <button onClick={() => onDelete(loc.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {isDetailModalOpen && (
@@ -2352,44 +2569,6 @@ function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, o
   );
 }
 
-function LocationCard({ location, onClick }) {
-    return (
-        <div onClick={onClick} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
-            <div>
-                <h3 className="text-xl font-bold text-indigo-700 truncate">{location.Name}</h3>
-                <p className="text-gray-500 text-sm flex items-center mt-1">
-                    <span className="w-4 h-4 mr-2">{icons.mapPin}</span>
-                    {location.Address}
-                </p>
-            </div>
-
-            {/* NIEUW: Blok voor contactpersoon */}
-            {location.contactPerson && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Contactpersoon</h4>
-                    <p className="font-semibold text-gray-800">{location.contactPerson.Name}</p>
-                    <div className="text-sm text-gray-600 mt-1 space-y-1">
-                        <p className="flex items-center">
-                            <span className="w-4 h-4 mr-2">{icons.mail}</span>
-                            {location.contactPerson.Email || 'N.v.t.'}
-                        </p>
-                        <p className="flex items-center">
-                            <span className="w-4 h-4 mr-2">{icons.phone}</span>
-                            {location.contactPerson.Phone || 'N.v.t.'}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-2 text-xs">
-                {location.terras && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">Terras</span>}
-                {location.kleedruimte && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Kleedruimte</span>}
-                {location.isWheelchairAccessible && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Rolstoeltoegankelijk</span>}
-            </div>
-        </div>
-    );
-}
-
 function LocationDetailModal({ location, performances, onClose, onEdit, onDelete }) {
     const openingstijden = useMemo(() => {
         try {
@@ -2441,7 +2620,6 @@ function LocationDetailModal({ location, performances, onClose, onEdit, onDelete
                             </div>
                         </DetailItem>
                         
-                        {/* AANGEPAST: Contactpersoon info toegevoegd */}
                         <DetailItem label="Contactpersoon">
                             {location.contactPerson ? (
                                 <div className="space-y-1">
@@ -2459,7 +2637,6 @@ function LocationDetailModal({ location, performances, onClose, onEdit, onDelete
                         <DetailItem label="Deelnamegeld" value={location.deelnamegeld} />
                     </div>
                     
-                    {/* Rest van de modal is ongewijzigd */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                        <DetailItem label="Faciliteiten">
                            <div className="flex flex-wrap gap-2 text-sm">
@@ -2511,7 +2688,7 @@ function LocationDetailModal({ location, performances, onClose, onEdit, onDelete
 }
 
 
-function LocationForm({ location, performances, cafeOwners, onClose, onSave }) { // AANGEPAST: cafeOwners toegevoegd
+function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
     const initialOpeningstijden = useMemo(() => {
         const days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
         try {
@@ -2551,7 +2728,7 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
         opmerkingen: location?.opmerkingen || '',
         hasDining: location?.hasDining || false,
         isWheelchairAccessible: location?.isWheelchairAccessible || false,
-        contactPersonId: location?.contactPersonId || '', // NIEUW
+        contactPersonId: location?.contactPersonId || '',
     });
     const [openingstijden, setOpeningstijden] = useState(initialOpeningstijden);
     const [programmed, setProgrammed] = useState(initialProgrammed);
@@ -2595,7 +2772,6 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
     };
     
     const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
-    // NIEUW: Sorteer café-eigenaren voor de dropdown
     const sortedCafeOwners = useMemo(() => [...cafeOwners].sort((a,b) => a.Name.localeCompare(b.Name)), [cafeOwners]);
 
     return (
@@ -2605,7 +2781,6 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
                     <h3 className="text-2xl font-bold">{location ? 'Locatie Bewerken' : 'Nieuwe Locatie'}</h3>
                 </header>
                 <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6 space-y-6">
-                    {/* Basis Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van de locatie" className="w-full p-2 border rounded" required />
                         <input type="text" name="Address" value={formData.Address} onChange={handleChange} placeholder="Adres" className="w-full p-2 border rounded" />
@@ -2615,7 +2790,6 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
                         <input type="email" name="mailadres_algemeen" value={formData.mailadres_algemeen} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
                     </div>
                     
-                    {/* NIEUW: Dropdown voor contactpersoon */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon (Café-eigenaar)</label>
                         <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
@@ -2626,14 +2800,12 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
                         </select>
                     </div>
 
-                    {/* Details */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <input type="number" name="capaciteit" value={formData.capaciteit} onChange={handleChange} placeholder="Capaciteit" className="w-full p-2 border rounded" />
                         <input type="number" name="maximale_gezelschapsgrootte" value={formData.maximale_gezelschapsgrootte} onChange={handleChange} placeholder="Max. gezelschapsgrootte" className="w-full p-2 border rounded" />
                         <input type="text" name="deelnamegeld" value={formData.deelnamegeld} onChange={handleChange} placeholder="Deelnamegeld" className="w-full p-2 border rounded" />
                     </div>
                     
-                    {/* Textareas en Checkboxes... (rest van de form is ongewijzigd) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <textarea name="voorkeur_genre_thema" value={formData.voorkeur_genre_thema} onChange={handleChange} placeholder="Voorkeur genre/thema" className="w-full p-2 border rounded h-24"></textarea>
                        <textarea name="techniek" value={formData.techniek} onChange={handleChange} placeholder="Notities over techniek" className="w-full p-2 border rounded h-24"></textarea>
@@ -2690,88 +2862,6 @@ function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
     );
 }
 
-
-function AddOwnersToLocationModal({ location, allCafeOwners, onClose, onUpdateLocation }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedOwnerIds, setSelectedOwnerIds] = useState(() => {
-    return new Set(location.ownerIds || []);
-  });
-  const [isSaving, setIsSaving] = useState(false);
-
-  const filteredOwners = useMemo(() => {
-    return allCafeOwners
-      .filter(owner => 
-        owner.Name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a,b) => a.Name.localeCompare(b.Name));
-  }, [allCafeOwners, searchTerm]);
-
-  const handleToggleOwner = (ownerId) => {
-    const newSelectedIds = new Set(selectedOwnerIds);
-    if (newSelectedIds.has(ownerId)) {
-      newSelectedIds.delete(ownerId);
-    } else {
-      newSelectedIds.add(ownerId);
-    }
-    setSelectedOwnerIds(newSelectedIds);
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-        await onUpdateLocation(location.id, { ownerIds: Array.from(selectedOwnerIds) });
-    } catch (e) {
-        console.error("Fout bij bijwerken eigenaren:", e);
-    } finally {
-        setIsSaving(false);
-        onClose();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl flex flex-col" style={{maxHeight: '90vh'}}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-bold">Eigenaren beheren voor "{location.Name}"</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
-        </div>
-        
-        <div className="relative mb-4">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">{icons.search}</span>
-          <input
-              type="text"
-              placeholder="Zoek eigenaar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 pl-10 border rounded-lg"
-          />
-        </div>
-
-        <div className="flex-grow overflow-y-auto border rounded-lg p-2 space-y-2">
-            {filteredOwners.length > 0 ? filteredOwners.map(owner => (
-                <label key={owner.id} className="flex items-center p-3 rounded-md hover:bg-gray-100 cursor-pointer">
-                    <input 
-                        type="checkbox"
-                        checked={selectedOwnerIds.has(owner.id)}
-                        onChange={() => handleToggleOwner(owner.id)}
-                        className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                    />
-                    <span className="ml-3 text-gray-800">{owner.Name}</span>
-                </label>
-            )) : <p className="text-center text-gray-500 p-4">Geen café-eigenaren gevonden.</p>}
-        </div>
-
-        <div className="flex justify-end space-x-4 pt-6">
-          <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annuleren</button>
-          <button type="button" onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">
-            {isSaving ? 'Opslaan...' : 'Opslaan'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete, hasEditPermissions, onQuickView }) {
   const [showPast, setShowPast] = useState(false); 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -2779,23 +2869,20 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
   const [editingExecution, setEditingExecution] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   
-  const initialFilters = {
-    performanceId: 'all',
-    locationId: 'all',
-    expectedCrowd: 'all',
-    quietRoute: 'all',
-    hasNgt: 'all',
-  };
-
   const enrichedExecutionsBase = useMemo(() => {
     const now = new Date();
     return executions
         .map(exec => ({
             ...exec,
             performance: performances.find(p => p.id === exec.performanceId),
-            location: locations.find(l => l.id === exec.locationId)
+            location: locations.find(l => l.id === exec.locationId),
         }))
         .filter(exec => exec.performance && exec.location)
+        .map(exec => ({
+            ...exec,
+            performanceTitle: exec.performance.Title,
+            locationName: exec.location.Name,
+        }))
         .filter(exec => showPast || new Date(exec.DateTime) >= now);
   }, [executions, performances, locations, showPast]);
   
@@ -2810,17 +2897,16 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
   } = useSortAndFilter(
       enrichedExecutionsBase,
       'DateTime',
-      ['performance.Title', 'location.Name'],
-      initialFilters
+      ['performanceTitle', 'locationName']
   );
 
   const ALL_COLUMNS = useMemo(() => [
-    { key: 'performanceTitle', header: 'Voorstelling', sortable: true },
-    { key: 'locationName', header: 'Locatie', sortable: true },
-    { key: 'DateTime', header: 'Datum & Tijd', sortable: true },
-    { key: 'expectedCrowd', header: 'Verwachte Drukte', sortable: true },
-    { key: 'quietRoute', header: 'Rustige Route', sortable: true },
-    { key: 'hasNgt', header: 'NGT', sortable: true },
+    { key: 'performanceTitle', header: 'Voorstelling', sortable: true, filterable: true },
+    { key: 'locationName', header: 'Locatie', sortable: true, filterable: true },
+    { key: 'DateTime', header: 'Datum & Tijd', sortable: true, filterable: false },
+    { key: 'expectedCrowd', header: 'Verwachte Drukte', sortable: true, filterable: true },
+    { key: 'quietRoute', header: 'Rustige Route', sortable: true, filterable: true },
+    { key: 'hasNgt', header: 'NGT', sortable: true, filterable: true },
   ], []);
 
   const [visibleColumns, setVisibleColumns] = useState(new Set(['performanceTitle', 'locationName', 'DateTime']));
@@ -2836,7 +2922,7 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters]);
+  }, [searchTerm, sortConfig, filters, showPast]);
 
   const handleEdit = (execution) => {
     setEditingExecution(execution);
@@ -2876,16 +2962,6 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
   const isAllSelected = filteredExecutions.length > 0 && selectedIds.size === filteredExecutions.length;
   const countText = `Toont ${filteredExecutions.length} van ${executions.length} uitvoeringen`;
   
-  const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
-  const sortedLocations = useMemo(() => [...locations].sort((a,b) => a.Name.localeCompare(b.Name)), [locations]);
-  const crowdOptions = useMemo(() => Array.from(new Set(executions.map(e => e.expectedCrowd).filter(Boolean))), [executions]);
-  
-  const booleanFilterOptions = [
-    { value: 'all', label: 'Alle' },
-    { value: 'yes', label: 'Ja' },
-    { value: 'no', label: 'Nee' },
-  ];
-
   return (
     <div>
       <ViewHeader
@@ -2905,23 +2981,6 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
         </button>
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
-
-      <FilterBar>
-          <FilterDropdown label="Voorstelling" name="performanceId" value={filters.performanceId} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Alle Voorstellingen' },
-              ...sortedPerformances.map(p => ({ value: p.id, label: p.Title }))
-          ]} />
-          <FilterDropdown label="Locatie" name="locationId" value={filters.locationId} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Alle Locaties' },
-              ...sortedLocations.map(l => ({ value: l.id, label: l.Name }))
-          ]} />
-          <FilterDropdown label="Verwachte Drukte" name="expectedCrowd" value={filters.expectedCrowd} onChange={handleFilterChange} options={[
-              { value: 'all', label: 'Alle' },
-              ...crowdOptions.map(c => ({ value: c, label: c }))
-          ]} />
-          <FilterDropdown label="Rustige Route" name="quietRoute" value={filters.quietRoute} onChange={handleFilterChange} options={booleanFilterOptions} />
-          <FilterDropdown label="NGT" name="hasNgt" value={filters.hasNgt} onChange={handleFilterChange} options={booleanFilterOptions} />
-      </FilterBar>
 
       {selectedIds.size > 0 && hasEditPermissions && (
         <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
@@ -2943,7 +3002,17 @@ function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd,
                   disabled={filteredExecutions.length === 0}
                 />
               </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={enrichedExecutionsBase}
+                />
+              )}
               {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
@@ -3150,11 +3219,11 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
   const [selectedIds, setSelectedIds] = useState(new Set());
   
   const ALL_COLUMNS = useMemo(() => [
-    { key: 'Name', header: 'Naam', sortable: true },
-    { key: 'gage', header: 'Gage', sortable: true },
-    { key: 'executionCount', header: 'Aantal Uitvoeringen', sortable: false },
-    { key: 'sponsorLogoUrl', header: 'Sponsor Logo', sortable: false },
-    { key: 'mapUrl', header: 'Kaart URL', sortable: false },
+    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'gage', header: 'Gage', sortable: true, filterable: true },
+    { key: 'executionCount', header: 'Aantal Uitvoeringen', sortable: false, filterable: false },
+    { key: 'sponsorLogoUrl', header: 'Sponsor Logo', sortable: false, filterable: false },
+    { key: 'mapUrl', header: 'Kaart URL', sortable: false, filterable: false },
   ], []);
 
   const [visibleColumns, setVisibleColumns] = useState(new Set(['Name', 'gage', 'executionCount']));
@@ -3173,15 +3242,23 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
       executionCount: e.executionIds?.length || 0
   })), [events]);
   
-  const { filteredAndSortedItems: filteredEvents, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
+  const { 
+    filteredAndSortedItems: filteredEvents, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(
       enrichedEvents,
       'Name',
-      ['Name']
+      ['Name', 'gage']
   );
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig, filters]);
 
   const handleEdit = (event) => {
     setEditingEvent(event);
@@ -3249,7 +3326,17 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
                   disabled={filteredEvents.length === 0}
                 />
               </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={enrichedEvents}
+                />
+              )}
               {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
             </tr>
           </thead>
@@ -3471,20 +3558,328 @@ function ManageExecutionsForEventModal({ event, allExecutions, allPerformances, 
     );
 }
 
+// Dit bestand bevat de overige view-componenten voor de applicatie.
+
+// --- Vrijwilligers View ---
+// Toont een gefilterde lijst van contacten die de rol 'vrijwilliger' hebben.
+function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
+
+  // Filter de contacten om alleen vrijwilligers te tonen.
+  const volunteers = useMemo(() => 
+    contacts.filter(c => (c.Role || '').toLowerCase() === 'vrijwilliger'),
+    [contacts]
+  );
+
+  // Gebruik de custom hook voor sorteren en filteren.
+  const { 
+    filteredAndSortedItems: filteredVolunteers, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(volunteers, 'Name', ['Name', 'Email', 'Phone', 'pronouns', 'shirtSize']);
+
+  // Definieer de kolommen voor de tabel.
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'Email', header: 'Email', sortable: true, filterable: true },
+    { key: 'Phone', header: 'Telefoon', sortable: false, filterable: false },
+    { key: 'pronouns', header: 'Voornaamwoorden', sortable: true, filterable: true },
+    { key: 'shirtSize', header: 'Shirtmaat', sortable: true, filterable: true },
+    { key: 'yearsActive', header: 'Actieve Jaren', sortable: false, filterable: false },
+  ], []);
+  
+  const [visibleColumns, setVisibleColumns] = useState(new Set(ALL_COLUMNS.map(c => c.key)));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+
+  const handleEdit = (contact) => {
+    setEditingContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingContact(null);
+    setIsModalOpen(true);
+  };
+
+  const countText = `Toont ${filteredVolunteers.length} van ${volunteers.length} vrijwilligers`;
+
+  return (
+    <div>
+      <ViewHeader 
+        title="Vrijwilligers"
+        countText={countText}
+        onAddNew={handleAddNew}
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
+      >
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
+
+      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                <SortableTh 
+                    key={col.key} 
+                    column={col} 
+                    sortConfig={sortConfig} 
+                    requestSort={requestSort}
+                    filters={filters}
+                    handleFilterChange={handleFilterChange}
+                    allItems={volunteers}
+                />
+              )}
+              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredVolunteers.length > 0 ? filteredVolunteers.map(contact => (
+              <tr key={contact.id}>
+                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap">{contact.Name}</td>}
+                {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap">{contact.Email}</td>}
+                {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap">{contact.Phone}</td>}
+                {visibleColumns.has('pronouns') && <td className="px-6 py-4 whitespace-nowrap">{contact.pronouns}</td>}
+                {visibleColumns.has('shirtSize') && <td className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>}
+                {visibleColumns.has('yearsActive') && <td className="px-6 py-4 whitespace-nowrap">{(contact.yearsActive || []).join(', ')}</td>}
+                {hasEditPermissions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                )}
+              </tr>
+            )) : (
+              <tr><td colSpan={visibleColumns.size + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen vrijwilligers gevonden.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && (
+        // ContactForm wordt verondersteld beschikbaar te zijn vanuit een ander bestand.
+        <ContactForm 
+          key={editingContact ? editingContact.id : 'new-volunteer'}
+          contact={editingContact || { Role: 'vrijwilliger' }} 
+          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            const dataToSave = { ...data, Role: 'vrijwilliger' };
+            if (editingContact) {
+              onUpdate(editingContact.id, dataToSave);
+            } else {
+              onAdd(dataToSave);
+            }
+            setIsModalOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// --- Info View ---
+function InfoView({ infoItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(infoItems, 'Titel', ['Titel', 'Inhoud']);
+    const countText = `Toont ${filteredAndSortedItems.length} van ${infoItems.length} info items`;
+
+    const handleEdit = (item) => {
+        setEditingItem(item);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingItem(null);
+        setIsModalOpen(true);
+    };
+
+    return (
+        <div>
+            <ViewHeader title="Info Pagina" countText={countText} onAddNew={handleAddNew} onSearch={setSearchTerm} searchTerm={searchTerm} hasEditPermissions={hasEditPermissions} />
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                    {filteredAndSortedItems.map(item => (
+                        <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
+                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                            </div>
+                            {hasEditPermissions && (
+                                <div className="flex space-x-2">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 p-2">{icons.edit}</button>
+                                    <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900 p-2">{icons.trash}</button>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            {isModalOpen && (
+                <InfoForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
+                    if (editingItem) onUpdate(editingItem.id, data);
+                    else onAdd(data);
+                    setIsModalOpen(false);
+                }} />
+            )}
+        </div>
+    );
+}
+
+function InfoForm({ item, onClose, onSave }) {
+    const [formData, setFormData] = useState({ Titel: item?.Titel || '', Inhoud: item?.Inhoud || '' });
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+                <h3 className="text-2xl font-bold mb-6">{item ? 'Info Item Bewerken' : 'Nieuw Info Item'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" name="Titel" value={formData.Titel} onChange={handleChange} placeholder="Titel" className="w-full p-2 border rounded" required />
+                    <textarea name="Inhoud" value={formData.Inhoud} onChange={handleChange} placeholder="Inhoud" className="w-full p-2 border rounded h-40" required></textarea>
+                    <div className="flex justify-end space-x-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// --- Nieuws View ---
+function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(nieuwsItems, 'Titel', ['Titel', 'Inhoud']);
+    const countText = `Toont ${filteredAndSortedItems.length} van ${nieuwsItems.length} nieuws items`;
+
+    const handleEdit = (item) => {
+        setEditingItem(item);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingItem(null);
+        setIsModalOpen(true);
+    };
+
+    return (
+        <div>
+            <ViewHeader title="Nieuws" countText={countText} onAddNew={handleAddNew} onSearch={setSearchTerm} searchTerm={searchTerm} hasEditPermissions={hasEditPermissions} />
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                    {filteredAndSortedItems.map(item => (
+                        <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
+                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                            </div>
+                            {hasEditPermissions && (
+                                <div className="flex space-x-2">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 p-2">{icons.edit}</button>
+                                    <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900 p-2">{icons.trash}</button>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            {isModalOpen && (
+                <InfoForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
+                    if (editingItem) onUpdate(editingItem.id, data);
+                    else onAdd(data);
+                    setIsModalOpen(false);
+                }} />
+            )}
+        </div>
+    );
+}
+
+// --- Toegankelijkheid View ---
+function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(toegankelijkheidItems, 'Titel', ['Titel', 'Inhoud']);
+    const countText = `Toont ${filteredAndSortedItems.length} van ${toegankelijkheidItems.length} items`;
+
+    const handleEdit = (item) => {
+        setEditingItem(item);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingItem(null);
+        setIsModalOpen(true);
+    };
+
+    return (
+        <div>
+            <ViewHeader title="Toegankelijkheid" countText={countText} onAddNew={handleAddNew} onSearch={setSearchTerm} searchTerm={searchTerm} hasEditPermissions={hasEditPermissions} />
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                    {filteredAndSortedItems.map(item => (
+                        <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
+                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                            </div>
+                            {hasEditPermissions && (
+                                <div className="flex space-x-2">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 p-2">{icons.edit}</button>
+                                    <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900 p-2">{icons.trash}</button>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            {isModalOpen && (
+                <InfoForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
+                    if (editingItem) onUpdate(editingItem.id, data);
+                    else onAdd(data);
+                    setIsModalOpen(false);
+                }} />
+            )}
+        </div>
+    );
+}
+
+// --- Schedule View ---
+// Dit component rendert het blokkenschema voor een geselecteerd evenement.
 function ScheduleView({ events, performances, executions, locations, companies, onQuickView }) {
+    // State voor het bijhouden van het geselecteerde evenement ID.
     const [selectedEventId, setSelectedEventId] = useState(events.length > 0 ? events[0].id : '');
     
+    // Sorteer de evenementen alfabetisch voor de dropdown.
     const sortedEvents = useMemo(() => [...events].sort((a,b) => a.Name.localeCompare(b.Name)), [events]);
 
+    // Memoized berekening van de schemagegevens op basis van de selecties.
     const scheduleData = useMemo(() => {
         if (!selectedEventId) return [];
         
         const event = events.find(e => e.id === selectedEventId);
         if (!event || !event.executionIds) return [];
 
+        // 1. Filter en verrijk de uitvoeringen die bij het geselecteerde evenement horen.
         const eventExecutions = (event.executionIds || [])
             .map(execId => executions.find(e => e.id === execId))
-            .filter(Boolean)
+            .filter(Boolean) // Verwijder null-waarden als een uitvoering niet wordt gevonden.
             .map(e => {
                 const performance = performances.find(p => p.id === e.performanceId);
                 const company = performance ? companies.find(c => c.id === performance.companyId) : null;
@@ -3496,8 +3891,9 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                     dateTime: new Date(e.DateTime)
                 }
             })
-            .filter(e => e.performance && e.location && e.company);
+            .filter(e => e.performance && e.location && e.company); // Zorg ervoor dat alle gekoppelde data bestaat.
 
+        // 2. Groepeer de uitvoeringen per dag.
         const executionsByDate = eventExecutions.reduce((acc, exec) => {
             const dateKey = exec.dateTime.toISOString().split('T')[0];
             if (!acc[dateKey]) acc[dateKey] = [];
@@ -3505,17 +3901,19 @@ function ScheduleView({ events, performances, executions, locations, companies, 
             return acc;
         }, {});
 
+        // 3. Bouw de datastructuur op voor elke dag.
         const dailySchedules = Object.keys(executionsByDate).map(dateKey => {
             const dayExecutions = executionsByDate[dateKey];
             if (dayExecutions.length === 0) return null;
 
+            // Bepaal de start- en eindtijden voor de tijdvakken van de dag.
             const times = dayExecutions.map(e => e.dateTime.getTime());
             const minDateTime = new Date(Math.min(...times));
             const maxDateTime = new Date(Math.max(...times));
 
             const timeSlots = [];
             let currentTime = new Date(minDateTime);
-            currentTime.setMinutes(Math.floor(currentTime.getMinutes() / 30) * 30, 0, 0);
+            currentTime.setMinutes(Math.floor(currentTime.getMinutes() / 30) * 30, 0, 0); // Rond af naar het dichtstbijzijnde halfuur.
 
             let endTime = new Date(maxDateTime);
             endTime.setMinutes(endTime.getMinutes() + 30);
@@ -3526,6 +3924,7 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                 currentTime.setMinutes(currentTime.getMinutes() + 30);
             }
 
+            // Haal de unieke locaties voor de dag op en sorteer ze.
             const dayLocations = Array.from(new Set(dayExecutions.map(e => e.locationId)))
                 .map(locationId => {
                     const location = locations.find(l => l.id === locationId);
@@ -3541,15 +3940,18 @@ function ScheduleView({ events, performances, executions, locations, companies, 
             };
         }).filter(Boolean);
 
+        // Sorteer de dagen chronologisch.
         return dailySchedules.sort((a, b) => a.date - b.date);
 
     }, [selectedEventId, performances, executions, locations, events, companies]);
 
+    // Berekent de startpositie en de breedte (span) van een uitvoering in de grid.
     const getExecutionPosition = (execution, timeSlots) => {
         const startTime = execution.dateTime;
-        const durationMinutes = 30;
+        const durationMinutes = 30; // Aanname dat alle voorstellingen 30 minuten duren.
         const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
+        // Vind het start-tijdvak.
         let startSlotIndex = -1;
         for (let i = 0; i < timeSlots.length; i++) {
             const slotStart = timeSlots[i];
@@ -3561,6 +3963,7 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         }
         if (startSlotIndex === -1) return { startSlotIndex: 0, span: 1 };
 
+        // Vind het eind-tijdvak om de span te bepalen.
         let endSlotIndex = startSlotIndex;
         for (let i = startSlotIndex; i < timeSlots.length; i++) {
             const slotEnd = new Date(timeSlots[i].getTime() + 30 * 60000);
@@ -3575,11 +3978,45 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         const span = Math.max(1, endSlotIndex - startSlotIndex + 1);
         return { startSlotIndex, span };
     };
+    
+    // Genereert een CSV-bestand van het huidige schema.
+    const handleExport = () => {
+        if (!selectedEventId || scheduleData.length === 0) {
+            console.warn("Geen data om te exporteren.");
+            return;
+        }
+
+        const event = events.find(e => e.id === selectedEventId);
+        const eventName = event ? event.Name.replace(/\s/g, '_') : 'schema';
+
+        // Maak de data plat voor CSV-export.
+        const flattenedData = [];
+        scheduleData.forEach(day => {
+            const dateString = day.date.toLocaleDateString('nl-NL', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            day.locations.forEach(location => {
+                location.executions.forEach(exec => {
+                    flattenedData.push({
+                        Datum: dateString,
+                        Tijd: exec.dateTime.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        Locatie: location.Name,
+                        Voorstelling: exec.performance.Title,
+                        Gezelschap: exec.company.Name,
+                    });
+                });
+            });
+        });
+
+        if (flattenedData.length > 0) {
+            exportToCsv(`blokkenschema_${eventName}.csv`, flattenedData);
+        }
+    };
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">Blokkenschema</h2>
+            <ViewHeader
+                title="Blokkenschema"
+                onExport={handleExport}
+            >
                 <div className="w-64">
                     <select 
                         value={selectedEventId} 
@@ -3592,7 +4029,7 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                         ))}
                     </select>
                 </div>
-            </div>
+            </ViewHeader>
 
             {selectedEventId && scheduleData.length > 0 ? (
                 <div className="space-y-12">
@@ -3603,7 +4040,9 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                             </h3>
                             <div className="bg-white rounded-lg shadow-md overflow-x-auto">
                                 <div className="grid" style={{ gridTemplateColumns: `150px 1fr` }}>
+                                    {/* Header voor locaties */}
                                     <div className="sticky left-0 bg-gray-100 p-2 font-semibold z-20 border-b border-r border-gray-300">Locatie</div>
+                                    {/* Headers voor tijdvakken */}
                                     <div className="grid" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
                                         {day.timeSlots.map(time => (
                                             <div key={time.toISOString()} className="bg-gray-50 p-2 text-center text-sm font-semibold border-b border-l border-gray-200">
@@ -3612,13 +4051,16 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                                         ))}
                                     </div>
 
+                                    {/* Rijen voor elke locatie */}
                                     {day.locations.map(location => (
                                         <React.Fragment key={location.id}>
                                             <div className="sticky left-0 bg-white p-2 font-semibold z-10 border-t border-r border-gray-300 flex items-center">{location.Name}</div>
                                             <div className="relative grid border-t border-gray-200" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
+                                                {/* Verticale lijnen voor de grid */}
                                                 {day.timeSlots.map((_, index) => (
                                                     <div key={index} className="border-l border-gray-200 h-full"></div>
                                                 ))}
+                                                {/* Render de uitvoeringen op de juiste posities */}
                                                 {location.executions.map(exec => {
                                                     const { startSlotIndex, span } = getExecutionPosition(exec, day.timeSlots);
                                                     return (
@@ -3653,6 +4095,8 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         </div>
     );
 }
+
+// --- Contract Templates ---
 const contractTemplateNL = `Het Café Theater Festival (CTF), rechtsgeldig vertegenwoordigd door Christiaan Uytdehaage, en [company_name], hierna te noemen ‘gezelschap’, spreken het volgende met elkaar af:
 
 1. Het gezelschap maakt een voorstelling die speelt op [event_names]. De voorstelling speelt in totaal [execution_count] keer verspreid over [execution_day_count] dagen.
@@ -3709,11 +4153,13 @@ Date: [current_date]                                                Date:
 Signature:                                                          Signature:
 `;
 
+// Dit component genereert een contract op basis van de geselecteerde voorstelling.
 function ContractGenerator({ contacts, companies, performances, events, executions, showNotification }) {
   const [selectedPerformanceId, setSelectedPerformanceId] = useState('');
   const [contractText, setContractText] = useState('');
   const [language, setLanguage] = useState('nl');
 
+  // Laadt de jsPDF-bibliotheek wanneer het component voor het eerst wordt gerenderd.
   useEffect(() => {
     if (!document.getElementById('jspdf-script')) {
       const script = document.createElement('script');
@@ -3724,6 +4170,7 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     }
   }, []);
   
+  // Genereert de contracttekst op basis van de geselecteerde data.
   const generateContract = () => {
     const performance = performances.find(p => p.id === selectedPerformanceId);
     if (!performance) {
@@ -3736,19 +4183,15 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         return;
     }
 
+    // Verzamel alle relevante data.
     const performanceExecutions = executions.filter(exec => exec.performanceId === performance.id);
     const executionIds = new Set(performanceExecutions.map(e => e.id));
-    
-    const uniqueExecutionDays = new Set(
-        performanceExecutions.map(exec => new Date(exec.DateTime).toISOString().split('T')[0])
-    );
+    const uniqueExecutionDays = new Set(performanceExecutions.map(exec => new Date(exec.DateTime).toISOString().split('T')[0]));
     const executionDayCount = uniqueExecutionDays.size;
-
-    const relevantEvents = events.filter(event => 
-        (event.executionIds || []).some(execId => executionIds.has(execId))
-    );
-
+    const relevantEvents = events.filter(event => (event.executionIds || []).some(execId => executionIds.has(execId)));
     const eventNames = relevantEvents.map(e => e.Name);
+    
+    // Formatteer de lijst met evenementnamen.
     let eventNameString;
     if (language === 'nl') {
         eventNameString = eventNames.join(', ');
@@ -3764,33 +4207,23 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         }
     }
 
-
     const executionCount = performanceExecutions.length;
-    
     const playerCount = (company.playerIds || []).length;
     const totalGageFromEvents = relevantEvents.reduce((sum, event) => sum + (parseFloat(event.gage) || 0), 0);
     const totalCalculatedGage = playerCount * totalGageFromEvents;
 
+    // Verzamel de namen van de artiesten.
     const companyPlayerIds = new Set(company.playerIds || []);
     const allMemberIds = new Set([...companyPlayerIds, company.contactPersonId].filter(Boolean));
     const companyArtists = contacts.filter(c => allMemberIds.has(c.id));
-
     const artistListString = companyArtists
-        .map(a => {
-            let role = '';
-            if (companyPlayerIds.has(a.id)) role = language === 'nl' ? ', speler' : ', performer';
-            return `${a.Name}${role}`;
-        })
+        .map(a => `${a.Name}${companyPlayerIds.has(a.id) ? (language === 'nl' ? ', speler' : ', performer') : ''}`)
         .join('\n');
 
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear();
-    const formattedDate = `${day}-${month}-${year}`;
+    const formattedDate = new Date().toLocaleDateString('nl-NL');
 
+    // Kies de juiste template en vervang de placeholders.
     let template = language === 'nl' ? contractTemplateNL : contractTemplateEN;
-    
     const replacements = {
         '[company_name]': company.Name,
         '[event_names]': eventNameString || (language === 'nl' ? 'N.v.t.' : 'N/A'),
@@ -3808,27 +4241,21 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     setContractText(template.trim());
   };
   
+  // Kopieert de gegenereerde tekst naar het klembord.
   const copyToClipboard = () => {
-    const textArea = document.createElement("textarea");
-    textArea.value = contractText;
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showNotification('Contract gekopieerd naar klembord!');
-    } catch (err) {
-      showNotification('Kon contract niet kopiëren.', 'error');
-    }
-    document.body.removeChild(textArea);
+    navigator.clipboard.writeText(contractText).then(() => {
+        showNotification('Contract gekopieerd naar klembord!');
+    }, () => {
+        showNotification('Kon contract niet kopiëren.', 'error');
+    });
   };
 
+  // Exporteert het contract als een PDF-bestand.
   const handleExportPDF = async () => {
     if (!contractText || !selectedPerformanceId) {
         showNotification('Genereer eerst een contract om te exporteren.', 'error');
         return;
     }
-
     if (!window.jspdf) {
         showNotification('PDF bibliotheek is aan het laden, probeer het zo opnieuw.', 'warning');
         return;
@@ -3841,22 +4268,19 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt' });
 
+    // Functie om de PDF te genereren en op te slaan, met of zonder logo.
     const addTextAndSave = (logoData = null) => {
         const pageHeight = doc.internal.pageSize.height;
         const pageWidth = doc.internal.pageSize.width;
         const margin = 40;
-        const lineHeight = 12;
-        const topMargin = 5 * lineHeight;
-
-        let yPos = margin + topMargin;
+        let yPos = margin;
 
         if (logoData) {
             const imgProps = doc.getImageProperties(logoData);
             const logoWidth = 100;
             const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
-            const x = pageWidth - logoWidth - margin;
-            doc.addImage(logoData, 'PNG', x, margin, logoWidth, logoHeight);
-            yPos = Math.max(yPos, margin + logoHeight + 20);
+            doc.addImage(logoData, 'PNG', pageWidth - logoWidth - margin, margin, logoWidth, logoHeight);
+            yPos += logoHeight + 20;
         }
 
         doc.setFont('Helvetica', 'normal');
@@ -3869,8 +4293,10 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         showNotification('PDF succesvol geëxporteerd!');
     };
     
+    // Probeert het CTF-logo te laden om aan de PDF toe te voegen.
     try {
         const logoUrl = 'https://cafetheaterfestival.nl/wp-content/uploads/2025/06/Logo_Web_Trans_Zwart.png';
+        // Gebruik een CORS-proxy om het laden van de afbeelding mogelijk te maken.
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${logoUrl}`;
         
         const response = await fetch(proxyUrl);
@@ -3879,23 +4305,21 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         const blob = await response.blob();
         const reader = new FileReader();
         reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-            addTextAndSave(reader.result);
-        };
+        reader.onloadend = () => addTextAndSave(reader.result);
         reader.onerror = () => {
              console.error("FileReader error on logo.");
-             addTextAndSave();
+             addTextAndSave(); // Ga verder zonder logo bij een fout.
         }
     } catch (error) {
         console.error("Kon logo niet laden voor PDF, ga verder zonder.", error);
         showNotification('Logo kon niet geladen worden, PDF wordt zonder logo gemaakt.', 'warning');
-        addTextAndSave();
+        addTextAndSave(); // Ga verder zonder logo bij een fout.
     }
   };
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Contract Generator</h2>
+      <ViewHeader title="Contract Generator" />
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -3937,571 +4361,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function TeamView({ showNotification }) {
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchTeamMembers = async () => {
-    setIsLoading(true);
-    try {
-      const response = await functions.createExecution('688f79e8003158b79b93', '{}', false); // Vervang 'listUsers' door je functie-ID
-      const data = JSON.parse(response.response);
-      if (data.users) {
-        // Filter alleen gebruikers met een @cafetheaterfestival.nl e-mail
-        const ctfUsers = data.users.filter(user => user.email.endsWith('@cafetheaterfestival.nl'));
-        setTeamMembers(ctfUsers);
-      } else {
-        throw new Error(data.message || 'Kon teamleden niet ophalen.');
-      }
-    } catch (error) {
-      console.error('Fout bij ophalen teamleden:', error);
-      showNotification(`Fout: ${error.message}`, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
-
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      await functions.createExecution(
-        '688f7a01000843a8542d', // Vervang 'updateUserRole' door je functie-ID
-        JSON.stringify({ userId, role: newRole }),
-        false
-      );
-      showNotification('Rol succesvol bijgewerkt!');
-      // Refresh de lijst om de wijziging te zien
-      fetchTeamMembers();
-    } catch (error) {
-      console.error('Fout bij bijwerken rol:', error);
-      showNotification(`Fout bij bijwerken rol: ${error.message}`, 'error');
-    }
-  };
-
-  return (
-    <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Team Beheer</h2>
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {isLoading ? (
-              <tr><td colSpan="3" className="text-center py-4">Teamleden laden...</td></tr>
-            ) : teamMembers.length > 0 ? teamMembers.map(member => (
-              <tr key={member.$id}>
-                <td className="px-6 py-4 whitespace-nowrap">{member.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{member.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {member.email === SUPER_ADMIN_EMAIL ? (
-                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Super Admin</span>
-                  ) : (
-                    <select
-                      value={member.prefs.role || 'viewer'}
-                      onChange={(e) => handleRoleChange(member.$id, e.target.value)}
-                      className="p-1 border rounded-md"
-                    >
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
-                    </select>
-                  )}
-                </td>
-              </tr>
-            )) : (
-              <tr><td colSpan="3" className="text-center py-4">Geen teamleden gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// --- NIEUWE COMPONENTEN HIERONDER ---
-
-// --- InfoView Component ---
-function InfoView({ infoItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  
-  const { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
-      infoItems,
-      'NameNl',
-      ['NameNl', 'NameEng']
-  );
-
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setIsModalOpen(true);
-  };
-
-  const countText = `Toont ${filteredAndSortedItems.length} van ${infoItems.length} info items`;
-
-  const columns = [
-    { key: 'NameNl', header: 'Nederlandse Naam', sortable: true },
-    { key: 'NameEng', header: 'Engelse Naam', sortable: true },
-    { key: 'MeerInfoNl', header: 'NL URL', sortable: false },
-    { key: 'MeerInfoEng', header: 'EN URL', sortable: false },
-    { key: 'MeerInfoAfbeelding', header: 'Afbeelding URL', sortable: false },
-  ];
-
-  return (
-    <div>
-      <ViewHeader
-        title="Meer Info"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map(col => <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedItems.length > 0 ? filteredAndSortedItems.map(item => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{item.NameNl}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.NameEng}</td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.MeerInfoNl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.MeerInfoNl}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.MeerInfoEng} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.MeerInfoEng}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.MeerInfoAfbeelding} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.MeerInfoAfbeelding}</a></td>
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
-                )}
-              </tr>
-            )) : (
-              <tr><td colSpan={columns.length + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen info items gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {isModalOpen && (
-        <InfoForm
-          item={editingItem}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingItem) {
-              onUpdate(editingItem.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsModalOpen(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function InfoForm({ item, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    NameNl: item?.NameNl || '',
-    NameEng: item?.NameEng || '',
-    MeerInfoNl: item?.MeerInfoNl || '',
-    MeerInfoEng: item?.MeerInfoEng || '',
-    MeerInfoAfbeelding: item?.MeerInfoAfbeelding || '',
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-        <h3 className="text-2xl font-bold mb-6">{item ? 'Info Item Bewerken' : 'Nieuw Info Item'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="NameNl" value={formData.NameNl} onChange={handleChange} placeholder="Nederlandse naam" className="w-full p-2 border rounded" required />
-          <input type="text" name="NameEng" value={formData.NameEng} onChange={handleChange} placeholder="Engelse naam" className="w-full p-2 border rounded" />
-          <input type="url" name="MeerInfoNl" value={formData.MeerInfoNl} onChange={handleChange} placeholder="Nederlandse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="MeerInfoEng" value={formData.MeerInfoEng} onChange={handleChange} placeholder="Engelse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="MeerInfoAfbeelding" value={formData.MeerInfoAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// --- NieuwsView Component ---
-function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  
-  const { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
-      nieuwsItems,
-      'NieuwsTitelNl',
-      ['NieuwsTitelNl', 'NieuwsTitelEng']
-  );
-
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setIsModalOpen(true);
-  };
-
-  const countText = `Toont ${filteredAndSortedItems.length} van ${nieuwsItems.length} nieuws items`;
-
-  const columns = [
-    { key: 'NieuwsTitelNl', header: 'Nederlandse Titel', sortable: true },
-    { key: 'NieuwsTitelEng', header: 'Engelse Titel', sortable: true },
-    { key: 'NieuwsUrlNl', header: 'NL URL', sortable: false },
-    { key: 'NieuwsUrlEng', header: 'EN URL', sortable: false },
-    { key: 'NieuwsAfbeelding', header: 'Afbeelding URL', sortable: false },
-  ];
-
-  return (
-    <div>
-      <ViewHeader
-        title="Nieuws"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map(col => <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedItems.length > 0 ? filteredAndSortedItems.map(item => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{item.NieuwsTitelNl}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.NieuwsTitelEng}</td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.NieuwsUrlNl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.NieuwsUrlNl}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.NieuwsUrlEng} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.NieuwsUrlEng}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.NieuwsAfbeelding} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.NieuwsAfbeelding}</a></td>
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
-                )}
-              </tr>
-            )) : (
-              <tr><td colSpan={columns.length + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen nieuws items gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {isModalOpen && (
-        <NieuwsForm
-          item={editingItem}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingItem) {
-              onUpdate(editingItem.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsModalOpen(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function NieuwsForm({ item, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    NieuwsTitelNl: item?.NieuwsTitelNl || '',
-    NieuwsTitelEng: item?.NieuwsTitelEng || '',
-    NieuwsUrlNl: item?.NieuwsUrlNl || '',
-    NieuwsUrlEng: item?.NieuwsUrlEng || '',
-    NieuwsAfbeelding: item?.NieuwsAfbeelding || '',
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-        <h3 className="text-2xl font-bold mb-6">{item ? 'Nieuws Item Bewerken' : 'Nieuw Nieuws Item'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="NieuwsTitelNl" value={formData.NieuwsTitelNl} onChange={handleChange} placeholder="Nederlandse titel" className="w-full p-2 border rounded" required />
-          <input type="text" name="NieuwsTitelEng" value={formData.NieuwsTitelEng} onChange={handleChange} placeholder="Engelse titel" className="w-full p-2 border rounded" />
-          <input type="url" name="NieuwsUrlNl" value={formData.NieuwsUrlNl} onChange={handleChange} placeholder="Nederlandse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="NieuwsUrlEng" value={formData.NieuwsUrlEng} onChange={handleChange} placeholder="Engelse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="NieuwsAfbeelding" value={formData.NieuwsAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// --- ToegankelijkheidView Component ---
-function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  
-  const { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(
-      toegankelijkheidItems,
-      'ToegankelijkheidTitleNl',
-      ['ToegankelijkheidTitleNl', 'ToegankelijkheidTitleEng']
-  );
-
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingItem(null);
-    setIsModalOpen(true);
-  };
-
-  const countText = `Toont ${filteredAndSortedItems.length} van ${toegankelijkheidItems.length} toegankelijkheid items`;
-
-  const columns = [
-    { key: 'ToegankelijkheidTitleNl', header: 'Nederlandse Titel', sortable: true },
-    { key: 'ToegankelijkheidTitleEng', header: 'Engelse Titel', sortable: true },
-    { key: 'ToegankelijkheidUrlNl', header: 'NL URL', sortable: false },
-    { key: 'ToegankelijkheidUrlEng', header: 'EN URL', sortable: false },
-    { key: 'ToegankelijkheidAfbeelding', header: 'Afbeelding URL', sortable: false },
-  ];
-
-  return (
-    <div>
-      <ViewHeader
-        title="Toegankelijkheid"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map(col => <SortableTh key={col.key} column={col} sortConfig={sortConfig} requestSort={requestSort} />)}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedItems.length > 0 ? filteredAndSortedItems.map(item => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{item.ToegankelijkheidTitleNl}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.ToegankelijkheidTitleEng}</td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.ToegankelijkheidUrlNl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.ToegankelijkheidUrlNl}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.ToegankelijkheidUrlEng} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.ToegankelijkheidUrlEng}</a></td>
-                <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs"><a href={item.ToegankelijkheidAfbeelding} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{item.ToegankelijkheidAfbeelding}</a></td>
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
-                )}
-              </tr>
-            )) : (
-              <tr><td colSpan={columns.length + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen toegankelijkheid items gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {isModalOpen && (
-        <ToegankelijkheidForm
-          item={editingItem}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingItem) {
-              onUpdate(editingItem.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsModalOpen(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function ToegankelijkheidForm({ item, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    ToegankelijkheidTitleNl: item?.ToegankelijkheidTitleNl || '',
-    ToegankelijkheidTitleEng: item?.ToegankelijkheidTitleEng || '',
-    ToegankelijkheidUrlNl: item?.ToegankelijkheidUrlNl || '',
-    ToegankelijkheidUrlEng: item?.ToegankelijkheidUrlEng || '',
-    ToegankelijkheidAfbeelding: item?.ToegankelijkheidAfbeelding || '',
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-        <h3 className="text-2xl font-bold mb-6">{item ? 'Toegankelijkheid Item Bewerken' : 'Nieuw Toegankelijkheid Item'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="ToegankelijkheidTitleNl" value={formData.ToegankelijkheidTitleNl} onChange={handleChange} placeholder="Nederlandse titel" className="w-full p-2 border rounded" required />
-          <input type="text" name="ToegankelijkheidTitleEng" value={formData.ToegankelijkheidTitleEng} onChange={handleChange} placeholder="Engelse titel" className="w-full p-2 border rounded" />
-          <input type="url" name="ToegankelijkheidUrlNl" value={formData.ToegankelijkheidUrlNl} onChange={handleChange} placeholder="Nederlandse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="ToegankelijkheidUrlEng" value={formData.ToegankelijkheidUrlEng} onChange={handleChange} placeholder="Engelse URL" className="w-full p-2 border rounded" />
-          <input type="url" name="ToegankelijkheidAfbeelding" value={formData.ToegankelijkheidAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-
-function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermissions }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState(null);
-
-  // 1. Filter de contacten om alleen vrijwilligers te krijgen.
-  const volunteers = useMemo(() => 
-    contacts.filter(c => (c.Role || '').toLowerCase() === 'vrijwilliger'), 
-    [contacts]
-  );
-  
-  const { 
-    filteredAndSortedItems: filteredVolunteers, 
-    searchTerm, 
-    setSearchTerm 
-  } = useSortAndFilter(volunteers, 'Name', ['Name', 'Email', 'functie']);
-
-  const handleEdit = (contact) => {
-    setEditingContact(contact);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    // Vooraf ingestelde rol voor een nieuwe vrijwilliger
-    setEditingContact({ Role: 'vrijwilliger' });
-    setIsModalOpen(true);
-  };
-
-  const countText = `Toont ${filteredVolunteers.length} van ${volunteers.length} vrijwilligers`;
-
-  return (
-    <div>
-      <ViewHeader
-        title="Vrijwilligers"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredVolunteers.length > 0 ? filteredVolunteers.map(volunteer => (
-          <div key={volunteer.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col">
-            <div className="p-6 flex-grow">
-              <div className="flex items-center mb-4">
-                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span className="text-xl font-bold text-indigo-600">{volunteer.Name?.charAt(0) || '?'}</span>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg leading-6 font-bold text-gray-900">{volunteer.Name}</h3>
-                  <p className="text-sm text-gray-500">{volunteer.pronouns || ''}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 text-sm text-gray-700">
-                <p><strong>Functie(s):</strong> {(volunteer.functie || []).join(', ') || 'N/A'}</p>
-                <p><strong>Email:</strong> {volunteer.Email || 'N/A'}</p>
-                <p><strong>Telefoon:</strong> {volunteer.Phone || 'N/A'}</p>
-                <p><strong>Adres:</strong> {volunteer.Adress || 'N/A'}</p>
-                <p><strong>Shirtmaat:</strong> {volunteer.shirtSize || 'N/A'}</p>
-              </div>
-            </div>
-            {hasEditPermissions && (
-              <div className="p-4 bg-gray-50 flex justify-end space-x-2">
-                <button onClick={() => handleEdit(volunteer)} className="text-indigo-600 hover:text-indigo-900 p-2">{icons.edit}</button>
-                <button onClick={() => onDelete(volunteer.id)} className="text-red-600 hover:text-red-900 p-2">{icons.trash}</button>
-              </div>
-            )}
-          </div>
-        )) : (
-          <p className="col-span-full text-center py-10">Geen vrijwilligers gevonden.</p>
-        )}
-      </div>
-
-      {isModalOpen && (
-        <ContactForm 
-          key={editingContact ? editingContact.id : 'new-volunteer'}
-          contact={editingContact} 
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingContact && editingContact.id) {
-              onUpdate(editingContact.id, data);
-            } else {
-              onAdd(data); // <-- DIT WERKT NU
-            }
-            setIsModalOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 }
