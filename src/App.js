@@ -2357,6 +2357,8 @@ function PerformanceForm({ performance, companies, onClose, onSave }) {
     </div>
   );
 }
+
+
 function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
