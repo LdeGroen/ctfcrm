@@ -17,6 +17,7 @@ const APPWRITE_COLLECTION_INFO_ID = '68945b4f000e7c3880cb';
 const APPWRITE_COLLECTION_NEWS_ID = '68948a4b002d7cda6919';
 const APPWRITE_COLLECTION_ACCESSIBILITY_ID = '6894d367002bf2645148';
 const APPWRITE_COLLECTION_VEILIGHEID_ID = '6899f3390009b108e10f';
+const APPWRITE_COLLECTION_MARKETING_ID = '689ded8900383f2d618b'; // NIEUWE MARKETING COLLECTIE
 
 
 // --- Initialiseer Appwrite Client ---
@@ -64,7 +65,12 @@ const icons = {
   clock: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
   shield: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
   filter: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>,
+  list: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>,
+  card: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>,
+  // Nieuw icoon voor marketing
+  megaphone: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>,
 };
+
 
 // --- Helper: Functie om speciale tekens te escapen voor RegExp ---
 function escapeRegExp(string) {
@@ -103,57 +109,71 @@ const fetchAllDocuments = async (collectionId) => {
     }
 };
 
-// --- Helper: Functie om data naar CSV te exporteren ---
-const exportToCsv = (filename, rows) => {
+// --- Helper: Functie om data te exporteren (CSV & PDF) ---
+const exportTo = (format, filename, rows, columns) => {
     if (!rows || rows.length === 0) {
-        // Gebruik een custom modal of notificatie i.p.v. alert
         console.warn("Geen data om te exporteren.");
-        // showNotification("Geen data om te exporteren.", "warning"); // Idealiter
         return;
     }
 
-    const processRow = (row) => {
-        let finalVal = '';
-        for (let j = 0; j < row.length; j++) {
-            let innerValue = row[j] === null || row[j] === undefined ? '' : String(row[j]);
+    const headers = columns.map(c => c.header);
+    const keys = columns.map(c => c.key);
+
+    const processRowForCsv = (rowValues) => {
+        return rowValues.map(val => {
+            let innerValue = val === null || val === undefined ? '' : String(val);
             if (typeof innerValue === 'string' && innerValue.includes(',')) {
-                // Omhul waarde met dubbele aanhalingstekens als er een komma in zit
                 innerValue = `"${innerValue.replace(/"/g, '""')}"`;
             }
-            if (j > 0) {
-                finalVal += ',';
-            }
-            finalVal += innerValue;
-        }
-        return finalVal + '\n';
+            return innerValue;
+        }).join(',') + '\n';
     };
 
-    let csvFile = '';
-    // Verwijder interne Appwrite velden en complexe objecten voor een schonere export
-    const headers = Object.keys(rows[0]).filter(key => !key.startsWith('$') && typeof rows[0][key] !== 'object');
-    csvFile += processRow(headers);
-
-    for (let i = 0; i < rows.length; i++) {
-        const values = headers.map(header => {
-            const value = rows[i][header];
-            if (Array.isArray(value)) {
-                return value.join(';'); // Voeg arrays samen met een puntkomma
-            }
-            return value;
+    if (format === 'csv') {
+        let csvFile = processRowForCsv(headers);
+        rows.forEach(row => {
+            const values = keys.map(key => {
+                const value = row[key];
+                if (Array.isArray(value)) return value.join('; ');
+                if (typeof value === 'boolean') return value ? 'Ja' : 'Nee';
+                return value;
+            });
+            csvFile += processRowForCsv(values);
         });
-        csvFile += processRow(values);
-    }
 
-    const blob = new Blob([`\uFEFF${csvFile}`], { type: 'text/csv;charset=utf-8;' }); // BOM toevoegen voor Excel compatibiliteit
-    const link = document.createElement("a");
-    if (link.download !== undefined) {
+        const blob = new Blob([`\uFEFF${csvFile}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", filename);
+        link.setAttribute("download", `${filename}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    } else if (format === 'pdf') {
+        if (!window.jspdf || !window.jspdf.jsPDF.autoTable) {
+            alert('PDF bibliotheek is nog aan het laden. Probeer het over enkele seconden opnieuw.');
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape' });
+        
+        const body = rows.map(row => {
+            return keys.map(key => {
+                const value = row[key];
+                if (Array.isArray(value)) return value.join('; ');
+                if (typeof value === 'boolean') return value ? 'Ja' : 'Nee';
+                return String(value || '');
+            });
+        });
+
+        doc.autoTable({
+            head: [headers],
+            body: body,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [74, 85, 104] }, // gray-700
+        });
+        doc.save(`${filename}.pdf`);
     }
 };
 
@@ -179,7 +199,7 @@ function useDropdown() {
     return { isOpen, toggle, close, dropdownRef };
 }
 
-// --- Custom Hook voor Sorteren & Filteren ---
+// --- Custom Hook voor Sorteren & Filteren (MET MULTI-SELECT) ---
 function useSortAndFilter(items, initialSortKey, searchKeys = [], initialFilters = {}) {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: initialSortKey, direction: 'ascending' });
@@ -193,27 +213,26 @@ function useSortAndFilter(items, initialSortKey, searchKeys = [], initialFilters
              const lowercasedTerm = searchTerm.toLowerCase();
              filtered = filtered.filter(item => 
                 searchKeys.some(key => {
-                    // Handle nested keys like 'contactPerson.Name'
                     const value = key.split('.').reduce((o, i) => (o ? o[i] : undefined), item);
                     return String(value).toLowerCase().includes(lowercasedTerm);
                 })
             );
         }
         
-        // Apply structured filters
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value === 'all' || value === '') return;
+        // Apply structured multi-select filters
+        Object.entries(filters).forEach(([key, selectedValues]) => {
+            if (!Array.isArray(selectedValues) || selectedValues.length === 0) return;
             
             filtered = filtered.filter(item => {
                 const itemValue = item[key];
                 if (typeof itemValue === 'boolean') {
-                    return (String(value).toLowerCase() === 'ja' && itemValue === true) || (String(value).toLowerCase() === 'nee' && itemValue === false);
+                    return selectedValues.includes(itemValue ? 'Ja' : 'Nee');
                 }
-                // Handle array values (like 'functie')
                 if (Array.isArray(itemValue)) {
-                    return itemValue.includes(value);
+                    // Check if any of the item's array values are in the selected filter values
+                    return itemValue.some(v => selectedValues.includes(v));
                 }
-                return String(itemValue || '').toLowerCase() === String(value).toLowerCase();
+                return selectedValues.includes(String(itemValue || ''));
             });
         });
       
@@ -251,8 +270,29 @@ function useSortAndFilter(items, initialSortKey, searchKeys = [], initialFilters
         setSortConfig({ key, direction });
     };
     
+    // Updated filter handler for multi-select
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
+        setFilters(prev => {
+            const newFilters = { ...prev };
+            const currentValues = prev[key] || [];
+
+            if (value === 'all') {
+                delete newFilters[key];
+                return newFilters;
+            }
+            
+            const newValues = currentValues.includes(value)
+                ? currentValues.filter(v => v !== value)
+                : [...currentValues, value];
+
+            if (newValues.length === 0) {
+                delete newFilters[key];
+            } else {
+                newFilters[key] = newValues;
+            }
+            
+            return newFilters;
+        });
     };
     
     const resetFilters = () => {
@@ -283,7 +323,6 @@ function App() {
         const currentUser = await account.get();
         if (currentUser.email.endsWith('@cafetheaterfestival.nl')) {
           const prefs = await account.getPrefs();
-          // Super admin heeft altijd de editor rol.
           const role = currentUser.email === SUPER_ADMIN_EMAIL ? 'super_admin' : (prefs.role || 'viewer');
           setUser({ ...currentUser, role: role });
         } else {
@@ -361,18 +400,18 @@ function CrmApp({ user, onLogout }) {
   const [locations, setLocations] = useState([]);
   const [executions, setExecutions] = useState([]);
   const [events, setEvents] = useState([]);
-  // Nieuwe states
   const [infoItems, setInfoItems] = useState([]);
   const [nieuwsItems, setNieuwsItems] = useState([]);
   const [toegankelijkheidItems, settoegankelijkheidItems] = useState([]);
   const [veiligheidItems, setVeiligheidItems] = useState([]);
+  const [marketingItems, setMarketingItems] = useState([]); // NIEUW
 
   const [loadingData, setLoadingData] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   
-  const [quickViewItem, setQuickViewItem] = useState(null); // { item: {}, type: 'contact' }
+  const [quickViewItem, setQuickViewItem] = useState(null);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ show: true, message, type });
@@ -388,6 +427,24 @@ function CrmApp({ user, onLogout }) {
   };
 
   useEffect(() => {
+    // Dynamically load jspdf and autotable scripts
+    if (!document.getElementById('jspdf-script')) {
+        const script = document.createElement('script');
+        script.id = 'jspdf-script';
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.async = true;
+        document.body.appendChild(script);
+    }
+    if (!document.getElementById('jspdf-autotable-script')) {
+        const script = document.createElement('script');
+        script.id = 'jspdf-autotable-script';
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js';
+        script.async = true;
+        document.body.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
     setLoadingData(true);
     const collections = {
       contacts: { id: APPWRITE_COLLECTION_CONTACTS_ID, setter: setContacts },
@@ -400,6 +457,7 @@ function CrmApp({ user, onLogout }) {
       news: { id: APPWRITE_COLLECTION_NEWS_ID, setter: setNieuwsItems },
       accessibility: { id: APPWRITE_COLLECTION_ACCESSIBILITY_ID, setter: settoegankelijkheidItems },
       veiligheid: { id: APPWRITE_COLLECTION_VEILIGHEID_ID, setter: setVeiligheidItems },
+      marketing: { id: APPWRITE_COLLECTION_MARKETING_ID, setter: setMarketingItems }, // NIEUW
     };
 
     const fetchInitialData = async () => {
@@ -461,7 +519,6 @@ function CrmApp({ user, onLogout }) {
 
   const handleUpdateItem = async (collectionId, id, data) => {
     try {
-      // Verwijder null waarden, Appwrite staat dit niet toe bij updates.
       const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== null));
       await databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, cleanData);
       showNotification('Item succesvol bijgewerkt!');
@@ -478,7 +535,6 @@ function CrmApp({ user, onLogout }) {
         
         const promises = updates.map(async ({ id, data }) => {
             try {
-                // Verwijder null waarden, Appwrite staat dit niet toe bij updates.
                 const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== null));
                 await databases.updateDocument(APPWRITE_DATABASE_ID, collectionId, id, cleanData);
                 successCount++;
@@ -580,6 +636,17 @@ function CrmApp({ user, onLogout }) {
           )}
 
           {loadingData && <div className="text-center p-10">Data laden...</div>}
+          
+          {!loadingData && activeView === 'festivalkantoor' && 
+            <FestivalkantoorView
+              executions={executions}
+              performances={performances}
+              locations={locations}
+              companies={companies}
+              onUpdateExecution={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_EXECUTIONS_ID, id, data)}
+              hasEditPermissions={hasEditPermissions}
+            />
+          }
 
           {!loadingData && activeView === 'volunteers' && 
             <VolunteersView 
@@ -605,6 +672,9 @@ function CrmApp({ user, onLogout }) {
             <CompaniesView 
               companies={companies} 
               artists={artists}
+              performances={performances}
+              executions={executions}
+              events={events}
               onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_COMPANIES_ID, data)}
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_COMPANIES_ID, id, data)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_COMPANIES_ID, id)}
@@ -617,6 +687,8 @@ function CrmApp({ user, onLogout }) {
             <PerformancesView 
               performances={performances}
               companies={companies}
+              executions={executions}
+              events={events}
               onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_PERFORMANCES_ID, data)}
               onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_PERFORMANCES_ID, id, data)}
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_PERFORMANCES_ID, id)}
@@ -698,6 +770,20 @@ function CrmApp({ user, onLogout }) {
               onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_VEILIGHEID_ID, id)}
               userRole={user.role}
             />}
+            
+          {/* NIEUWE MARKETING VIEW RENDER */}
+          {!loadingData && activeView === 'marketing' && 
+            <MarketingView
+              marketingItems={marketingItems}
+              performances={performances}
+              companies={companies}
+              executions={executions}
+              onAdd={(data) => handleAddItem(APPWRITE_COLLECTION_MARKETING_ID, data)}
+              onUpdate={(id, data) => handleUpdateItem(APPWRITE_COLLECTION_MARKETING_ID, id, data)}
+              onDelete={(id) => handleDeleteItem(APPWRITE_COLLECTION_MARKETING_ID, id)}
+              hasEditPermissions={hasEditPermissions}
+            />}
+            
           {!loadingData && activeView === 'schedule' && 
             <ScheduleView 
               events={events}
@@ -716,6 +802,16 @@ function CrmApp({ user, onLogout }) {
               executions={executions}
               showNotification={showNotification}
             />}
+          {!loadingData && activeView === 'cafeContract' && 
+            <CafeContractGenerator 
+              contacts={contacts} 
+              companies={companies} 
+              performances={performances}
+              events={events}
+              executions={executions}
+              locations={locations}
+              showNotification={showNotification}
+            />}
         </main>
       </div>
     </div>
@@ -726,6 +822,7 @@ function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, 
   const hasEditPermissions = user.role === 'editor' || user.role === 'super_admin';
   
   const navItems = [
+    { id: 'festivalkantoor', label: 'Festivalkantoor', icon: icons.briefcase, visible: true },
     { id: 'contacts', label: 'Contacten', icon: icons.users, visible: true },
     { id: 'volunteers', label: 'Vrijwilligers', icon: icons.star, visible: true }, 
     { id: 'companies', label: 'Gezelschappen', icon: icons.briefcase, visible: true },
@@ -733,11 +830,13 @@ function Sidebar({ activeView, setActiveView, user, onLogout, isMobile = false, 
     { id: 'executions', label: 'Uitvoeringen', icon: icons.calendar, visible: true },
     { id: 'locations', label: 'Locaties', icon: icons.mapPin, visible: true },
     { id: 'events', label: 'Events', icon: icons.star, visible: true },
+    { id: 'marketing', label: 'Marketing', icon: icons.megaphone, visible: true }, // NIEUW
     { id: 'info', label: 'Info', icon: icons.info, visible: true },
     { id: 'news', label: 'Nieuws', icon: icons.news, visible: true },
     { id: 'accessibility', label: 'Toegankelijkheid', icon: icons.accessibility, visible: true },
     { id: 'schedule', label: 'Blokkenschema', icon: icons.grid, visible: true },
-    { id: 'contract', label: 'Contract Generator', icon: icons.fileText, visible: true },
+    { id: 'contract', label: 'Contract Generator (Gezelschappen)', icon: icons.fileText, visible: true },
+    { id: 'cafeContract', label: 'Contract Generator (Cafés)', icon: icons.fileText, visible: true },
     { id: 'veiligheid', label: 'Veiligheid', icon: icons.shield, visible: hasEditPermissions },
   ];
 
@@ -798,6 +897,22 @@ function ConfirmModal({ message, onConfirm, onCancel }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+// --- Helper Component: ToggleSwitch ---
+function ToggleSwitch({ checked, onChange, disabled = false }) {
+    const handleToggle = () => {
+        if (!disabled) {
+            onChange(!checked);
+        }
+    };
+
+    return (
+        <label className={`relative inline-flex items-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+            <input type="checkbox" checked={checked} onChange={handleToggle} className="sr-only peer" disabled={disabled} />
+            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+        </label>
     );
 }
 
@@ -919,6 +1034,31 @@ function QuickViewModal({ initialItem, itemType, data, onClose }) {
 
 // --- Generieke Componenten voor Views ---
 
+function ViewSwitcher({ viewMode, setViewMode }) {
+    const baseClasses = "p-2 rounded-lg flex items-center space-x-2 transition-colors";
+    const activeClasses = "bg-indigo-600 text-white shadow";
+    const inactiveClasses = "bg-gray-200 text-gray-700 hover:bg-gray-300";
+
+    return (
+        <div className="flex bg-gray-200 rounded-lg p-1">
+            <button
+                onClick={() => setViewMode('list')}
+                className={`${baseClasses} ${viewMode === 'list' ? activeClasses : inactiveClasses}`}
+            >
+                {icons.list}
+                <span>Lijst</span>
+            </button>
+            <button
+                onClick={() => setViewMode('card')}
+                className={`${baseClasses} ${viewMode === 'card' ? activeClasses : inactiveClasses}`}
+            >
+                {icons.card}
+                <span>Kaartjes</span>
+            </button>
+        </div>
+    );
+}
+
 function CopyToClipboardButton({ textToCopy }) {
     const [isCopied, setIsCopied] = useState(false);
 
@@ -998,7 +1138,33 @@ function FilterDropdown({ label, name, value, onChange, options }) {
     );
 }
 
-function ViewHeader({ title, countText, onAddNew, onImport, onExport, onSearch, searchTerm, children, hasEditPermissions }) {
+function ExportButton({ onExport, data, columns, filename }) {
+    const { isOpen, toggle, close, dropdownRef } = useDropdown();
+
+    const handleExport = (format) => {
+        onExport(format, filename, data, columns);
+        close();
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button onClick={toggle} className="bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 flex items-center space-x-2">
+                {icons.download}
+                <span>Exporteren</span>
+                <span className="w-4 h-4">{icons.chevronDown}</span>
+            </button>
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-xl z-20">
+                    <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Als CSV</button>
+                    <button onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Als PDF</button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+function ViewHeader({ title, countText, onAddNew, onImport, onExport, exportData, exportColumns, exportFilename, onSearch, searchTerm, children, hasEditPermissions, viewMode, setViewMode }) {
     return (
         <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm pt-4 pb-4 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-gray-200">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -1008,10 +1174,7 @@ function ViewHeader({ title, countText, onAddNew, onImport, onExport, onSearch, 
                 </div>
                 {hasEditPermissions && (
                     <div className="flex space-x-2">
-                        {onExport && <button onClick={onExport} className="bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 flex items-center space-x-2">
-                            {icons.download}
-                            <span>Exporteren</span>
-                        </button>}
+                        {onExport && <ExportButton onExport={onExport} data={exportData} columns={exportColumns} filename={exportFilename} />}
                         {onImport && <button onClick={onImport} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center space-x-2">
                             {icons.upload}
                             <span>Importeren</span>
@@ -1034,6 +1197,7 @@ function ViewHeader({ title, countText, onAddNew, onImport, onExport, onSearch, 
                         className="w-full p-2 pl-10 border rounded-lg shadow-sm"
                     />
                 </div>
+                {setViewMode && <ViewSwitcher viewMode={viewMode} setViewMode={setViewMode} />}
                 {children}
             </div>
         </div>
@@ -1163,8 +1327,7 @@ function GenericImportModal({ onClose, onImport, requiredColumns, title, complex
 function SortableTh({ column, sortConfig, requestSort, filters, handleFilterChange, allItems }) {
     const { isOpen, toggle, close, dropdownRef } = useDropdown();
     const isSorted = sortConfig.key === column.key;
-
-    const filterValue = filters[column.key] || 'all';
+    const filterValues = filters && filters[column.key] ? filters[column.key] : [];
 
     const uniqueValues = useMemo(() => {
         if (!column.filterable) return [];
@@ -1187,8 +1350,9 @@ function SortableTh({ column, sortConfig, requestSort, filters, handleFilterChan
     }, [allItems, column.key, column.filterable]);
 
     const handleFilterSelect = (value) => {
-        handleFilterChange(column.key, value);
-        close();
+        if (handleFilterChange) {
+            handleFilterChange(column.key, value);
+        }
     };
 
     return (
@@ -1207,21 +1371,21 @@ function SortableTh({ column, sortConfig, requestSort, filters, handleFilterChan
                         )
                     )}
                 </div>
-                {column.filterable && uniqueValues.length > 0 && (
+                {column.filterable && uniqueValues.length > 0 && handleFilterChange && (
                     <div className="relative" ref={dropdownRef}>
-                        <button onClick={toggle} className={`ml-2 p-1 rounded-full ${filterValue !== 'all' ? 'bg-indigo-200 text-indigo-800' : 'text-gray-400 hover:bg-gray-200'}`}>
+                        <button onClick={toggle} className={`ml-2 p-1 rounded-full ${filterValues.length > 0 ? 'bg-indigo-200 text-indigo-800' : 'text-gray-400 hover:bg-gray-200'}`}>
                            <div className="w-4 h-4">{icons.filter}</div>
                         </button>
                         {isOpen && (
                             <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-xl z-20">
                                 <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
                                     <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
-                                        <input type="radio" name={`${column.key}-filter`} value="all" checked={filterValue === 'all'} onChange={() => handleFilterSelect('all')} className="h-4 w-4 text-indigo-600 border-gray-300"/>
+                                        <input type="checkbox" checked={filterValues.length === 0} onChange={() => handleFilterSelect('all')} className="h-4 w-4 text-indigo-600 border-gray-300"/>
                                         <span className="font-semibold">Alles</span>
                                     </label>
                                     {uniqueValues.map(value => (
                                         <label key={value} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
-                                            <input type="radio" name={`${column.key}-filter`} value={value} checked={filterValue === value} onChange={() => handleFilterSelect(value)} className="h-4 w-4 text-indigo-600 border-gray-300"/>
+                                            <input type="checkbox" checked={filterValues.includes(value)} onChange={() => handleFilterSelect(value)} className="h-4 w-4 text-indigo-600 border-gray-300"/>
                                             <span>{value}</span>
                                         </label>
                                     ))}
@@ -1235,6 +1399,206 @@ function SortableTh({ column, sortConfig, requestSort, filters, handleFilterChan
     );
 };
 
+// --- NIEUWE VIEW: Festivalkantoor ---
+function FestivalkantoorView({ executions, performances, locations, companies, onUpdateExecution, hasEditPermissions }) {
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const [showPast, setShowPast] = useState(false);
+    const [modalInfo, setModalInfo] = useState({ isOpen: false, execution: null, type: '' });
+
+    const allExecutionDates = useMemo(() => {
+        const dates = new Set(executions.map(e => e.DateTime.split('T')[0]));
+        return Array.from(dates).sort((a, b) => new Date(a) - new Date(b));
+    }, [executions]);
+
+    const firstUpcomingDate = useMemo(() => {
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
+        return allExecutionDates.find(date => new Date(date) >= todayDate) || allExecutionDates[0] || '';
+    }, [allExecutionDates, today]);
+
+    const [selectedDate, setSelectedDate] = useState(firstUpcomingDate);
+    
+    useEffect(() => {
+        if (firstUpcomingDate && !selectedDate) {
+            setSelectedDate(firstUpcomingDate);
+        }
+    }, [firstUpcomingDate, selectedDate]);
+
+    const displayableDates = useMemo(() => {
+        if (showPast) return allExecutionDates;
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
+        return allExecutionDates.filter(date => new Date(date) >= todayDate);
+    }, [allExecutionDates, showPast, today]);
+
+    const todaysExecutions = useMemo(() => {
+        if (!selectedDate) return [];
+        return executions
+            .filter(e => e.DateTime.startsWith(selectedDate))
+            .map(e => {
+                const performance = performances.find(p => p.id === e.performanceId);
+                const company = performance ? companies.find(c => c.id === performance.companyId) : null;
+                return {
+                    ...e,
+                    performance: {
+                        ...performance,
+                        companyName: company ? company.Name : 'Onbekend'
+                    },
+                    location: locations.find(l => l.id === e.locationId)
+                };
+            })
+            .filter(e => e.performance && e.location)
+            .sort((a, b) => new Date(a.DateTime) - new Date(b.DateTime));
+    }, [selectedDate, executions, performances, locations, companies]);
+
+    const handleOpenModal = (execution, type) => {
+        setModalInfo({ isOpen: true, execution, type });
+    };
+
+    const handleCloseModal = () => {
+        setModalInfo({ isOpen: false, execution: null, type: '' });
+    };
+
+    const handleSave = (executionId, data) => {
+        onUpdateExecution(executionId, data);
+        handleCloseModal();
+    };
+
+    const handleExport = () => {
+        if (todaysExecutions.length === 0) {
+            return;
+        }
+        const dataToExport = todaysExecutions.map(exec => ({
+            'Locatie': exec.location.Name,
+            'Maker': exec.performance.companyName,
+            'Dag': new Date(exec.DateTime).toLocaleDateString('nl-NL'),
+            'Tijd': new Date(exec.DateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+            'PWYC': exec.PWYC || 0,
+            'Bezoekersaantallen': exec.BezoekersAantallen || 0,
+        }));
+
+        const headers = ['Locatie', 'Maker', 'Dag', 'Tijd', 'PWYC', 'Bezoekersaantallen'];
+        const dateString = selectedDate.replace(/-/g, '');
+        exportTo('csv', `festivalkantoor_${dateString}`, dataToExport, headers.map(h => ({header: h, key: h})));
+    };
+    
+    const formatDateForDisplay = (dateString) => {
+        if (!dateString) return "Geen datum geselecteerd";
+        const date = new Date(dateString + 'T12:00:00');
+        return date.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    };
+
+    return (
+        <div>
+            <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm pt-4 pb-4 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-gray-200">
+                <h2 className="text-3xl font-bold text-gray-800 mb-4">Festivalkantoor</h2>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <select
+                        value={selectedDate}
+                        onChange={e => setSelectedDate(e.target.value)}
+                        className="p-2 border rounded-lg shadow-sm bg-white"
+                    >
+                        {displayableDates.map(date => (
+                            <option key={date} value={date}>{formatDateForDisplay(date)}</option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={() => setShowPast(!showPast)}
+                        className="p-2 border rounded-lg shadow-sm bg-white hover:bg-gray-100"
+                    >
+                        {showPast ? 'Verleden verbergen' : 'Verleden tonen'}
+                    </button>
+                    {hasEditPermissions && (
+                       <button onClick={handleExport} className="bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 flex items-center space-x-2">
+                           {icons.download}
+                           <span>Exporteer Dag</span>
+                       </button>
+                    )}
+                </div>
+            </div>
+
+            {todaysExecutions.length > 0 ? (
+                <div className="space-y-4">
+                    {todaysExecutions.map(exec => (
+                        <div key={exec.id} className="bg-white p-4 rounded-lg shadow-md border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex-grow">
+                                <p className="text-sm text-gray-500">{new Date(exec.DateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} @ {exec.location.Name}</p>
+                                <h3 className="text-xl font-bold text-gray-800">{exec.performance.Title}</h3>
+                                <p className="text-md text-indigo-600">{exec.performance.companyName}</p>
+                            </div>
+                            {hasEditPermissions && (
+                                <div className="flex flex-shrink-0 gap-2 flex-wrap">
+                                    <button onClick={() => handleOpenModal(exec, 'crowd')} className="bg-yellow-500 text-white px-3 py-2 text-sm rounded-lg hover:bg-yellow-600">Druktemeter</button>
+                                    <button onClick={() => handleOpenModal(exec, 'visitors')} className="bg-blue-500 text-white px-3 py-2 text-sm rounded-lg hover:bg-blue-600">Bezoekersaantallen</button>
+                                    <button onClick={() => handleOpenModal(exec, 'pwyc')} className="bg-green-500 text-white px-3 py-2 text-sm rounded-lg hover:bg-green-600">PWYC</button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-center text-gray-500 mt-8">Geen uitvoeringen gevonden voor {formatDateForDisplay(selectedDate)}.</p>
+            )}
+
+            {modalInfo.isOpen && (
+                <FestivalkantoorEditModal
+                    execution={modalInfo.execution}
+                    type={modalInfo.type}
+                    onClose={handleCloseModal}
+                    onSave={handleSave}
+                />
+            )}
+        </div>
+    );
+}
+
+
+// --- NIEUW: Modal voor Festivalkantoor ---
+function FestivalkantoorEditModal({ execution, type, onClose, onSave }) {
+    const config = {
+        crowd: { title: 'Druktemeter Aanpassen', label: 'Nieuwe drukte-indicatie (bv. rustig, druk)', inputType: 'text', attribute: 'expectedCrowd' },
+        visitors: { title: 'Bezoekersaantallen Invoeren', label: 'Aantal bezoekers', inputType: 'number', attribute: 'BezoekersAantallen' },
+        pwyc: { title: 'PWYC Opbrengst Invoeren', label: 'PWYC Bedrag (€)', inputType: 'number', attribute: 'PWYC' }
+    };
+
+    const currentConfig = config[type];
+    const [value, setValue] = useState(execution[currentConfig.attribute] || '');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const dataToSave = {
+            [currentConfig.attribute]: currentConfig.inputType === 'number' ? Number(value) : value
+        };
+        onSave(execution.id, dataToSave);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+                <h3 className="text-2xl font-bold mb-4">{currentConfig.title}</h3>
+                <p className="text-sm text-gray-600 mb-6">{execution.performance.Title} om {new Date(execution.DateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{currentConfig.label}</label>
+                        <input
+                            type={currentConfig.inputType}
+                            value={value}
+                            onChange={e => setValue(e.target.value)}
+                            className="w-full p-2 border rounded"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+
 // --- NIEUWE VIEW ---
 function VeiligheidView({ veiligheidItems, onDelete, userRole }) {
   const { 
@@ -1247,8 +1611,8 @@ function VeiligheidView({ veiligheidItems, onDelete, userRole }) {
     handleFilterChange
   } = useSortAndFilter(
       veiligheidItems,
-      'Naam', // Sorteer standaard op naam
-      ['Naam', 'Telefoonnummer', 'Email', 'Event'] // Velden om op te zoeken
+      'Naam',
+      ['Naam', 'Telefoonnummer', 'Email', 'Event']
   );
 
   const columns = [
@@ -1322,6 +1686,8 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list');
+  const [detailContact, setDetailContact] = useState(null);
   
   const nonVolunteers = useMemo(() => 
     contacts.filter(c => (c.Role || '').toLowerCase() !== 'vrijwilliger'),
@@ -1361,9 +1727,10 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters]);
+  }, [searchTerm, sortConfig, filters, viewMode]);
 
   const handleEdit = (contact) => {
+    setDetailContact(null);
     setEditingContact(contact);
     setIsModalOpen(true);
   };
@@ -1403,10 +1770,6 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
     setSelectedIds(new Set());
   };
   
-  const handleExport = () => {
-    exportToCsv('contacten_export.csv', filteredAndSortedContacts);
-  };
-
   const isAllSelected = filteredAndSortedContacts.length > 0 && selectedIds.size === filteredAndSortedContacts.length;
   const countText = `Toont ${filteredAndSortedContacts.length} van ${nonVolunteers.length} contacten (excl. vrijwilligers)`;
 
@@ -1417,10 +1780,15 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         countText={countText}
         onAddNew={handleAddNew}
         onImport={() => setIsImportModalOpen(true)}
-        onExport={handleExport}
+        onExport={exportTo}
+        exportData={filteredAndSortedContacts}
+        exportColumns={ALL_COLUMNS.filter(c => visibleColumns.has(c.key))}
+        exportFilename="contacten"
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
         hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       >
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
@@ -1439,60 +1807,79 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  disabled={filteredAndSortedContacts.length === 0}
-                />
-              </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={nonVolunteers}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedContacts.length > 0 ? filteredAndSortedContacts.map(contact => (
-              <tr key={contact.id} className={selectedIds.has(contact.id) ? 'bg-indigo-50' : ''}>
-                <td className="px-4 py-4">
-                   <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                    checked={selectedIds.has(contact.id)}
-                    onChange={(e) => handleSelectOne(e, contact.id)}
-                  />
-                </td>
-                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Name}</span><CopyToClipboardButton textToCopy={contact.Name} /></div></td>}
-                {visibleColumns.has('Role') && <td className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>}
-                {visibleColumns.has('functie') && <td className="px-6 py-4 whitespace-nowrap capitalize">{(contact.functie || []).join(', ')}</td>}
-                {visibleColumns.has('yearsActive') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(contact.yearsActive || []).join(', ')}</td>}
-                {visibleColumns.has('isCurrentlyEmployed') && <td className="px-6 py-4 whitespace-nowrap">{contact.isCurrentlyEmployed ? 'Ja' : 'Nee'}</td>}
-                {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Email}</span>{contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}</div></td>}
-                {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Phone}</span>{contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}</div></td>}
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+      {viewMode === 'list' && (
+          <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      disabled={filteredAndSortedContacts.length === 0}
+                    />
+                  </th>
+                  {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                    <SortableTh 
+                        key={col.key} 
+                        column={col} 
+                        sortConfig={sortConfig} 
+                        requestSort={requestSort}
+                        filters={filters}
+                        handleFilterChange={handleFilterChange}
+                        allItems={nonVolunteers}
+                    />
+                  )}
+                  {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAndSortedContacts.length > 0 ? filteredAndSortedContacts.map(contact => (
+                  <tr key={contact.id} className={selectedIds.has(contact.id) ? 'bg-indigo-50' : ''}>
+                    <td className="px-4 py-4">
+                       <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        checked={selectedIds.has(contact.id)}
+                        onChange={(e) => handleSelectOne(e, contact.id)}
+                      />
                     </td>
+                    {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Name}</span><CopyToClipboardButton textToCopy={contact.Name} /></div></td>}
+                    {visibleColumns.has('Role') && <td className="px-6 py-4 whitespace-nowrap capitalize">{contact.Role}</td>}
+                    {visibleColumns.has('functie') && <td className="px-6 py-4 whitespace-nowrap capitalize">{(contact.functie || []).join(', ')}</td>}
+                    {visibleColumns.has('yearsActive') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(contact.yearsActive || []).join(', ')}</td>}
+                    {visibleColumns.has('isCurrentlyEmployed') && <td className="px-6 py-4 whitespace-nowrap">{contact.isCurrentlyEmployed ? 'Ja' : 'Nee'}</td>}
+                    {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Email}</span>{contact.Email && <CopyToClipboardButton textToCopy={contact.Email} />}</div></td>}
+                    {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center justify-between group"><span>{contact.Phone}</span>{contact.Phone && <CopyToClipboardButton textToCopy={contact.Phone} />}</div></td>}
+                    {hasEditPermissions && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                          <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                        </td>
+                    )}
+                  </tr>
+                )) : (
+                  <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen contacten gevonden.</td></tr>
                 )}
-              </tr>
-            )) : (
-              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen contacten gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </tbody>
+            </table>
+          </div>
+      )}
+      
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredAndSortedContacts.map(contact => (
+                <div key={contact.id} onClick={() => setDetailContact(contact)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{contact.Name}</h3>
+                        <p className="text-indigo-600 text-sm capitalize">{contact.Role}</p>
+                        <p className="text-gray-500 text-sm truncate mt-1">{(contact.functie || []).join(', ')}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-xs text-gray-400 truncate">{contact.Email}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
 
       {isModalOpen && (
         <ContactForm 
@@ -1507,6 +1894,14 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
             }
             setIsModalOpen(false);
           }}
+        />
+      )}
+      {detailContact && (
+        <ContactDetailModal 
+            contact={detailContact}
+            onClose={() => setDetailContact(null)}
+            onEdit={hasEditPermissions ? handleEdit : null}
+            onDelete={hasEditPermissions ? () => onDelete(detailContact.id) : null}
         />
       )}
       {isBulkEditModalOpen && (
@@ -1540,7 +1935,59 @@ function ContactsView({ contacts, onAdd, onUpdate, onBulkUpdate, onDelete, onBul
   );
 }
 
+function ContactDetailModal({ contact, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>
+        </div>
+    );
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{contact.Name}</h2>
+                        <p className="text-gray-500 capitalize mt-1">{contact.Role}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
 
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem label="Email" value={contact.Email} />
+                        <DetailItem label="Telefoon" value={contact.Phone} />
+                        <DetailItem label="Adres" value={contact.Adress} />
+                        <DetailItem label="Functie(s)" value={(contact.functie || []).join(', ')} />
+                        {(contact.Role || '').toLowerCase() === 'vrijwilliger' && (
+                            <>
+                                <DetailItem label="Voornaamwoorden" value={contact.pronouns} />
+                                <DetailItem label="Shirtmaat" value={contact.shirtSize} />
+                                <DetailItem label="Aangemeld Voor" value={(contact.AangemeldVoor || []).join(', ')} />
+                                <DetailItem label="Aanmelding via formulier" value={contact.viaFormulier ? 'Ja' : 'Nee'} />
+                            </>
+                        )}
+                        {(contact.Role || '').toLowerCase() === 'teamlid' && (
+                            <DetailItem label="Momenteel Actief" value={contact.isCurrentlyEmployed ? 'Ja' : 'Nee'} />
+                        )}
+                    </div>
+                    <DetailItem label="Actieve Jaren" value={(contact.yearsActive || []).join(', ')} />
+                    <DetailItem label="Notities" value={contact.Notes} />
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center">
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(contact.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(contact)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+// --- ContactForm (AANGEPAST) ---
 function ContactForm({ contact, onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: contact?.Name || '',
@@ -1554,6 +2001,9 @@ function ContactForm({ contact, onClose, onSave }) {
     functie: (contact?.functie || []).join(', '),
     pronouns: contact?.pronouns || '',
     shirtSize: contact?.shirtSize || '',
+    // Nieuwe velden voor vrijwilligers
+    AangemeldVoor: (contact?.AangemeldVoor || []).join(', '),
+    viaFormulier: contact?.viaFormulier || false,
   });
   const [showMoreYears, setShowMoreYears] = useState(false);
 
@@ -1582,6 +2032,7 @@ function ContactForm({ contact, onClose, onSave }) {
     const standardizedRole = formData.role.trim().toLowerCase();
     
     const functieForAppwrite = formData.functie.split(',').map(f => f.trim()).filter(Boolean);
+    const aangemeldVoorForAppwrite = formData.AangemeldVoor.split(',').map(a => a.trim()).filter(Boolean);
 
     const dataForAppwrite = {
         Name: formData.name,
@@ -1593,8 +2044,11 @@ function ContactForm({ contact, onClose, onSave }) {
         isCurrentlyEmployed: standardizedRole === 'teamlid' ? formData.isCurrentlyEmployed : false,
         yearsActive: Array.from(formData.yearsActive),
         functie: functieForAppwrite,
+        // Velden specifiek voor vrijwilligers
         pronouns: standardizedRole === 'vrijwilliger' ? formData.pronouns : null,
         shirtSize: standardizedRole === 'vrijwilliger' ? formData.shirtSize : null,
+        AangemeldVoor: standardizedRole === 'vrijwilliger' ? aangemeldVoorForAppwrite : [],
+        viaFormulier: standardizedRole === 'vrijwilliger' ? formData.viaFormulier : false,
     };
     onSave(dataForAppwrite);
   };
@@ -1628,6 +2082,11 @@ function ContactForm({ contact, onClose, onSave }) {
                     <option value="XL">XL</option>
                     <option value="XXL">XXL</option>
                 </select>
+                <input type="text" name="AangemeldVoor" value={formData.AangemeldVoor} onChange={handleChange} placeholder="Aangemeld voor (taken, gescheiden door komma's)" className="w-full p-2 border rounded" />
+                <label className="flex items-center space-x-2">
+                    <input type="checkbox" name="viaFormulier" checked={formData.viaFormulier} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                    <span>Aangemeld via formulier?</span>
+                </label>
             </div>
           )}
 
@@ -1676,6 +2135,7 @@ function ContactForm({ contact, onClose, onSave }) {
     </div>
   );
 }
+
 
 function BulkEditContactForm({ onClose, onSave, roles }) {
     const [fieldsToUpdate, setFieldsToUpdate] = useState({});
@@ -1770,1440 +2230,54 @@ function BulkEditContactForm({ onClose, onSave, roles }) {
     );
 }
 
-
-function HospitalityModal({ company, onClose }) {
-    if (!company) return null;
-
-    const renderList = (items) => {
-        if (!items || items.length === 0) return <span className="text-gray-500">N.v.t.</span>;
-        return (
-            <ul className="list-disc list-inside">
-                {items.map((item, index) => <li key={index}>{item}</li>)}
-            </ul>
-        );
-    };
-
-    const details = [
-        { label: "Aantal personen makersdag", value: company.AantalPersonenMakersdag || '0' },
-        { label: "Namen personen makersdag", value: renderList(company.NamenMakersdag) },
-        { label: "Aantal personen kick-off (ochtend)", value: company.AantalPersonenOchtendKickOff || '0' },
-        { label: "Namen kick-off (ochtend)", value: renderList(company.NamenOchtendKickOff) },
-        { label: "Aantal personen kick-off (middag)", value: company.AantalPersonenMiddagKickOff || '0' },
-        { label: "Namen kick-off (middag)", value: renderList(company.NamenMiddagKickOff) },
-        { label: "Aantal personen overnachting", value: company.OvernachtingPersonen || '0' },
-        { label: "Namen overnachting", value: renderList(company.NamenOvernachting) },
-        { label: "Namen catering", value: renderList(company.NamenCatering) },
-        { label: "Dieetwensen", value: company.DieetWensen || <span className="text-gray-500">Geen</span> },
-    ];
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-2xl font-bold mb-6">Hospitality & Makersdagen: {company.Name}</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
-                </div>
-                <dl className="space-y-4">
-                    {details.map(({ label, value }) => (
-                        <div key={label} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <dt className="font-semibold text-gray-600">{label}</dt>
-                            <dd className="md:col-span-2 text-gray-800">{value}</dd>
-                        </div>
-                    ))}
-                </dl>
-            </div>
-        </div>
-    );
-}
-
-function TechniqueModal({ company, onClose }) {
-    if (!company) return null;
-
-    const wishes = company.Techniek || [];
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-2xl font-bold mb-6">Techniekwensen: {company.Name}</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
-                </div>
-                {wishes.length > 0 ? (
-                    <div className="flex flex-wrap gap-3">
-                        {wishes.map((wish, index) => (
-                            <span key={index} className="bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full">
-                                {wish}
-                            </span>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-gray-500">Geen specifieke techniekwensen opgegeven.</p>
-                )}
-            </div>
-        </div>
-    );
-}
-
-
-function CompaniesView({ companies, artists, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [editingCompany, setEditingCompany] = useState(null);
-    const [selectedIds, setSelectedIds] = useState(new Set());
-    const [hospitalityModalCompany, setHospitalityModalCompany] = useState(null);
-    const [techniqueModalCompany, setTechniqueModalCompany] = useState(null);
-
-    const companiesWithDetails = useMemo(() => {
-        return companies.map(comp => {
-            const contactPerson = artists.find(a => a.id === comp.contactPersonId);
-            const players = (comp.playerIds || []).map(id => artists.find(a => a.id === id)).filter(Boolean);
-            return { ...comp, contactPerson, players, contactPersonName: contactPerson?.Name || '' };
-        });
-    }, [companies, artists]);
-
-    const { 
-        filteredAndSortedItems, 
-        searchTerm, 
-        setSearchTerm, 
-        sortConfig, 
-        requestSort,
-        filters,
-        handleFilterChange
-    } = useSortAndFilter(
-        companiesWithDetails,
-        'Name',
-        ['Name', 'contactPersonName', 'Description']
-    );
-
-    const columns = [
-        { key: 'Name', header: 'Naam', sortable: true, filterable: true },
-        { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
-        { key: 'players', header: 'Spelers', sortable: false, filterable: false },
-        { key: 'Description', header: 'Beschrijving', sortable: false, filterable: false },
-    ];
-
-    const handleEdit = (company) => {
-        setEditingCompany(company);
-        setIsModalOpen(true);
-    };
-
-    const handleAddNew = () => {
-        setEditingCompany(null);
-        setIsModalOpen(true);
-    };
-
-    const handleSelectAll = (e) => {
-        if (e.target.checked) {
-            setSelectedIds(new Set(filteredAndSortedItems.map(c => c.id)));
-        } else {
-            setSelectedIds(new Set());
-        }
-    };
-    
-    const handleSelectOne = (e, id) => {
-        const newSelectedIds = new Set(selectedIds);
-        if (e.target.checked) newSelectedIds.add(id);
-        else newSelectedIds.delete(id);
-        setSelectedIds(newSelectedIds);
-    };
-
-    const handleBulkDelete = () => {
-        if (selectedIds.size > 0) {
-          onBulkDelete(Array.from(selectedIds));
-          setSelectedIds(new Set());
-        }
-    };
-    
-    const handleImport = (data) => {
-        const formattedData = data.map(item => ({
-            ...item,
-            playerIds: item.playerIds ? item.playerIds.split(';').map(id => id.trim()) : [],
-        }));
-        onBulkAdd(formattedData);
-    };
-
-    const countText = `Toont ${filteredAndSortedItems.length} van ${companies.length} gezelschappen.`;
-    const isAllSelected = filteredAndSortedItems.length > 0 && selectedIds.size === filteredAndSortedItems.length;
-
-    return (
-        <div>
-            <ViewHeader
-                title="Gezelschappen"
-                countText={countText}
-                onAddNew={handleAddNew}
-                onImport={() => setIsImportModalOpen(true)}
-                onSearch={setSearchTerm}
-                searchTerm={searchTerm}
-                hasEditPermissions={hasEditPermissions}
-            />
-            {selectedIds.size > 0 && hasEditPermissions && (
-                <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
-                    <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-                    <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                        {icons.trash} <span>Verwijderen</span>
-                    </button>
-                </div>
-            )}
-            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3">
-                                <input type="checkbox" 
-                                    onChange={handleSelectAll} 
-                                    checked={isAllSelected}
-                                    disabled={filteredAndSortedItems.length === 0}
-                                />
-                            </th>
-                            {columns.map(col => 
-                                <SortableTh 
-                                    key={col.key} 
-                                    column={col} 
-                                    sortConfig={sortConfig} 
-                                    requestSort={requestSort}
-                                    filters={filters}
-                                    handleFilterChange={handleFilterChange}
-                                    allItems={companiesWithDetails}
-                                />
-                            )}
-                            {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredAndSortedItems.map(company => (
-                            <tr key={company.id} className={selectedIds.has(company.id) ? 'bg-indigo-50' : ''}>
-                                <td className="px-6 py-4">
-                                    <input type="checkbox" 
-                                        checked={selectedIds.has(company.id)} 
-                                        onChange={(e) => handleSelectOne(e, company.id)} 
-                                    />
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{company.Name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                                    {company.contactPerson ? (
-                                        <button onClick={() => onQuickView({ item: company.contactPerson, type: 'contact' })} className="text-indigo-600 hover:underline">{company.contactPerson.Name}</button>
-                                    ) : 'N.v.t.'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">{company.players.length}</td>
-                                <td className="px-6 py-4 text-gray-500 truncate max-w-xs">{company.Description}</td>
-                                {hasEditPermissions && (
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <button onClick={() => setHospitalityModalCompany(company)} title="Hospitality" className="text-green-600 hover:text-green-900 p-1">{icons.users}</button>
-                                        <button onClick={() => setTechniqueModalCompany(company)} title="Techniek" className="text-blue-600 hover:text-blue-900 p-1">{icons.settings}</button>
-                                        <button onClick={() => handleEdit(company)} title="Bewerken" className="text-indigo-600 hover:text-indigo-900 p-1">{icons.edit}</button>
-                                        <button onClick={() => onDelete(company.id)} title="Verwijderen" className="text-red-600 hover:text-red-900 p-1">{icons.trash}</button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            {isModalOpen && (
-                <CompanyForm
-                    company={editingCompany}
-                    artists={artists}
-                    onClose={() => setIsModalOpen(false)}
-                    onSave={(data) => {
-                        if (editingCompany) onUpdate(editingCompany.id, data);
-                        else onAdd(data);
-                        setIsModalOpen(false);
-                    }}
-                />
-            )}
-            {isImportModalOpen && (
-                <GenericImportModal 
-                    onClose={() => setIsImportModalOpen(false)}
-                    onImport={handleImport}
-                    requiredColumns={['Name']}
-                    title="Gezelschappen"
-                />
-            )}
-            {hospitalityModalCompany && <HospitalityModal company={hospitalityModalCompany} onClose={() => setHospitalityModalCompany(null)} />}
-            {techniqueModalCompany && <TechniqueModal company={techniqueModalCompany} onClose={() => setTechniqueModalCompany(null)} />}
-        </div>
-    );
-}
-
-function CompanyForm({ company, artists, onClose, onSave }) {
-    const [formData, setFormData] = useState({
-        Name: company?.Name || '',
-        Description: company?.Description || '',
-        contactPersonId: company?.contactPersonId || '',
-        playerIds: company?.playerIds || [],
-    });
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handlePlayerChange = (playerId) => {
-        setFormData(prev => {
-            const newPlayerIds = prev.playerIds.includes(playerId)
-                ? prev.playerIds.filter(id => id !== playerId)
-                : [...prev.playerIds, playerId];
-            return { ...prev, playerIds: newPlayerIds };
-        });
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-
-    const sortedArtists = useMemo(() => [...artists].sort((a,b) => a.Name.localeCompare(b.Name)), [artists]);
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
-                <h3 className="text-2xl font-bold mb-6">{company ? 'Gezelschap Bewerken' : 'Nieuw Gezelschap'}</h3>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van het gezelschap" className="w-full p-2 border rounded" required />
-                    <textarea name="Description" value={formData.Description} onChange={handleChange} placeholder="Korte beschrijving" className="w-full p-2 border rounded h-24"></textarea>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon</label>
-                        <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
-                            <option value="">Selecteer een contactpersoon</option>
-                            {sortedArtists.map(artist => <option key={artist.id} value={artist.id}>{artist.Name}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Selecteer Spelers</label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 border rounded-lg p-4 max-h-60 overflow-y-auto">
-                            {sortedArtists.map(artist => (
-                                <label key={artist.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
-                                    <input type="checkbox" checked={formData.playerIds.includes(artist.id)} onChange={() => handlePlayerChange(artist.id)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                                    <span>{artist.Name}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex justify-end space-x-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
-function PerformancesView({ performances, companies, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [editingPerformance, setEditingPerformance] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  
-  const enrichedPerformances = useMemo(() => performances.map(p => ({
-      ...p,
-      companyName: (companies.find(c => c.id === p.companyId) || {}).Name || '',
-      company: companies.find(c => c.id === p.companyId) || null
-  })), [performances, companies]);
-  
-  const { 
-    filteredAndSortedItems: filteredPerformances, 
-    searchTerm, 
-    setSearchTerm, 
-    sortConfig, 
-    requestSort,
-    filters,
-    handleFilterChange
-  } = useSortAndFilter(enrichedPerformances, 'Title', ['Title', 'companyName', 'genre']);
-
-  const ALL_COLUMNS = useMemo(() => [
-    { key: 'Title', header: 'Titel', sortable: true, filterable: true },
-    { key: 'companyName', header: 'Gezelschap', sortable: true, filterable: true },
-    { key: 'genre', header: 'Genre', sortable: true, filterable: true },
-    { key: 'isDutchLanguage', header: 'NL', sortable: true, filterable: true },
-    { key: 'isEnglishLanguage', header: 'EN', sortable: true, filterable: true },
-    { key: 'isDialogueFree', header: 'Taalloos', sortable: true, filterable: true },
-    { key: 'isChildFriendly', header: 'Kindvriendelijk', sortable: true, filterable: true },
-  ], []);
-
-  const [visibleColumns, setVisibleColumns] = useState(new Set(['Title', 'companyName', 'genre']));
-
-  const toggleColumn = (key) => {
-    setVisibleColumns(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(key)) newSet.delete(key);
-        else newSet.add(key);
-        return newSet;
-    });
-  };
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters]);
-
-  const handleEdit = (performance) => {
-    setEditingPerformance(performance);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingPerformance(null);
-    setIsModalOpen(true);
-  };
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(new Set(filteredPerformances.map(p => p.id)));
-    else setSelectedIds(new Set());
-  };
-
-  const handleSelectOne = (e, id) => {
-    const newSelectedIds = new Set(selectedIds);
-    if (e.target.checked) newSelectedIds.add(id);
-    else newSelectedIds.delete(id);
-    setSelectedIds(newSelectedIds);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.size > 0) {
-      onBulkDelete(Array.from(selectedIds));
-      setSelectedIds(new Set());
-    }
-  };
-  
-  const isAllSelected = filteredPerformances.length > 0 && selectedIds.size === filteredPerformances.length;
-  const countText = `Toont ${filteredPerformances.length} van ${performances.length} voorstellingen`;
-  
-  return (
-    <div>
-      <ViewHeader
-        title="Voorstellingen"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onImport={() => setIsImportModalOpen(true)}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      >
-        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
-      </ViewHeader>
-      
-      {selectedIds.size > 0 && hasEditPermissions && (
-        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
-            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                {icons.trash} <span>Verwijderen</span>
-            </button>
-        </div>
-      )}
-
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  disabled={filteredPerformances.length === 0}
-                />
-              </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={enrichedPerformances}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredPerformances.length > 0 ? filteredPerformances.map(p => (
-                  <tr key={p.id} className={selectedIds.has(p.id) ? 'bg-indigo-50' : ''}>
-                    <td className="px-4 py-4">
-                       <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                        checked={selectedIds.has(p.id)}
-                        onChange={(e) => handleSelectOne(e, p.id)}
-                      />
-                    </td>
-                    {visibleColumns.has('Title') && <td className="px-6 py-4 whitespace-nowrap font-medium">{p.Title}</td>}
-                    {visibleColumns.has('companyName') && <td className="px-6 py-4 whitespace-nowrap">
-                        {p.company ? (
-                            <button onClick={() => onQuickView({ item: p.company, type: 'company' })} className="text-indigo-600 hover:underline">
-                                {p.company.Name}
-                            </button>
-                        ) : 'N.v.t.'}
-                    </td>}
-                    {visibleColumns.has('genre') && <td className="px-6 py-4 whitespace-nowrap">{p.genre}</td>}
-                    {visibleColumns.has('isDutchLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isDutchLanguage ? 'Ja' : 'Nee'}</td>}
-                    {visibleColumns.has('isEnglishLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isEnglishLanguage ? 'Ja' : 'Nee'}</td>}
-                    {visibleColumns.has('isDialogueFree') && <td className="px-6 py-4 whitespace-nowrap">{p.isDialogueFree ? 'Ja' : 'Nee'}</td>}
-                    {visibleColumns.has('isChildFriendly') && <td className="px-6 py-4 whitespace-nowrap">{p.isChildFriendly ? 'Ja' : 'Nee'}</td>}
-                    {hasEditPermissions && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button onClick={() => handleEdit(p)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                          <button onClick={() => onDelete(p.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                        </td>
-                    )}
-                  </tr>
-                )) : (
-              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen voorstellingen gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <PerformanceForm 
-          performance={editingPerformance} 
-          companies={companies}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingPerformance) {
-              onUpdate(editingPerformance.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsModalOpen(false);
-          }}
-        />
-      )}
-      {isImportModalOpen && (
-        <GenericImportModal
-            title="Voorstellingen"
-            requiredColumns={['Title', 'companyId']}
-            onClose={() => setIsImportModalOpen(false)}
-            onImport={(data) => onBulkAdd(data.map(item => ({
-                Title: item.Title || '',
-                companyId: item.companyId || null,
-                genre: item.genre || '',
-                meerInfoUrl: item.meerInfoUrl || '',
-                imageUrl: item.imageUrl || '',
-                pwycLink: item.pwycLink || '',
-                isDutchLanguage: item.isDutchLanguage === 'true',
-                isEnglishLanguage: item.isEnglishLanguage === 'true',
-                isDialogueFree: item.isDialogueFree === 'true',
-                isChildFriendly: item.isChildFriendly === 'true',
-            })))}
-        />
-      )}
-    </div>
-  );
-}
-
-function PerformanceForm({ performance, companies, onClose, onSave }) {
-  const [formData, setFormData] = useState({ 
-      title: performance?.Title || '', 
-      companyId: performance?.companyId || '',
-      genre: performance?.genre || '',
-      meerInfoUrl: performance?.meerInfoUrl || '',
-      imageUrl: performance?.imageUrl || '',
-      pwycLink: performance?.pwycLink || '',
-      isDutchLanguage: performance?.isDutchLanguage || false,
-      isEnglishLanguage: performance?.isEnglishLanguage || false,
-      isDialogueFree: performance?.isDialogueFree || false,
-      isChildFriendly: performance?.isChildFriendly || false,
+function EventForm({ event, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+      name: event?.Name || '',
+      gage: event?.gage || 0,
+      sponsorLogoUrl: event?.sponsorLogoUrl || '',
+      mapUrl: event?.mapUrl || '',
+      InApp: event?.InApp || false,
   });
   
-  const sortedCompanies = useMemo(() => [...companies].sort((a,b) => a.Name.localeCompare(b.Name)), [companies]);
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+    }));
   };
-
+  
   const handleSubmit = (e) => { 
-      e.preventDefault(); 
-      onSave({ 
-          Title: formData.title, 
-          companyId: formData.companyId,
-          genre: formData.genre,
-          meerInfoUrl: formData.meerInfoUrl,
-          imageUrl: formData.imageUrl,
-          pwycLink: formData.pwycLink,
-          isDutchLanguage: formData.isDutchLanguage,
-          isEnglishLanguage: formData.isEnglishLanguage,
-          isDialogueFree: formData.isDialogueFree,
-          isChildFriendly: formData.isChildFriendly,
-      }); 
+    e.preventDefault(); 
+    onSave({ 
+        Name: formData.name, 
+        gage: String(formData.gage || '0'),
+        sponsorLogoUrl: formData.sponsorLogoUrl,
+        mapUrl: formData.mapUrl,
+        executionIds: event?.executionIds || [],
+        InApp: formData.InApp,
+    }); 
   };
   return (
      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
-        <h3 className="text-2xl font-bold mb-6">{performance ? 'Voorstelling Bewerken' : 'Nieuwe Voorstelling'}</h3>
+      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+        <h3 className="text-2xl font-bold mb-6">{event ? 'Event Bewerken' : 'Nieuw Event'}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Titel van de voorstelling" className="w-full p-2 border rounded" required />
-          <select name="companyId" value={formData.companyId} onChange={handleChange} className="w-full p-2 border rounded" required>
-            <option value="">Kies een gezelschap</option>
-            {sortedCompanies.map(c => <option key={c.id} value={c.id}>{c.Name}</option>)}
-          </select>
-          <input type="text" name="genre" value={formData.genre} onChange={handleChange} placeholder="Genre" className="w-full p-2 border rounded" />
-          <input type="url" name="meerInfoUrl" value={formData.meerInfoUrl} onChange={handleChange} placeholder="Meer Info URL" className="w-full p-2 border rounded" />
-          <input type="url" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
-          <input type="url" name="pwycLink" value={formData.pwycLink} onChange={handleChange} placeholder="PWYC Link" className="w-full p-2 border rounded" />
-          
-          <div className="grid grid-cols-2 gap-4">
-              <label className="flex items-center space-x-2"><input type="checkbox" name="isDutchLanguage" checked={formData.isDutchLanguage} onChange={handleChange} /><span>Nederlandstalig</span></label>
-              <label className="flex items-center space-x-2"><input type="checkbox" name="isEnglishLanguage" checked={formData.isEnglishLanguage} onChange={handleChange} /><span>Engelstalig</span></label>
-              <label className="flex items-center space-x-2"><input type="checkbox" name="isDialogueFree" checked={formData.isDialogueFree} onChange={handleChange} /><span>Taalloos</span></label>
-              <label className="flex items-center space-x-2"><input type="checkbox" name="isChildFriendly" checked={formData.isChildFriendly} onChange={handleChange} /><span>Kindvriendelijk</span></label>
-          </div>
-
-          <div className="flex justify-end space-x-4 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-
-function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions }) {
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
-  const [detailLocation, setDetailLocation] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-
-  const enrichedLocations = useMemo(() => locations.map(loc => {
-      const contactPerson = cafeOwners.find(c => c.id === loc.contactPersonId);
-      return {
-        ...loc,
-        ownerNames: (loc.ownerIds || []).map(id => cafeOwners.find(c => c.id === id)?.Name).filter(Boolean).join(', '),
-        contactPerson: contactPerson || null,
-        contactPersonName: contactPerson?.Name || ''
-      }
-  }), [locations, cafeOwners]);
-  
-  const { 
-    filteredAndSortedItems: filteredLocations, 
-    searchTerm, 
-    setSearchTerm, 
-    sortConfig, 
-    requestSort,
-    filters,
-    handleFilterChange
-  } = useSortAndFilter(
-      enrichedLocations,
-      'Name',
-      ['Name', 'Address', 'locationNumber', 'ownerNames', 'contactPersonName']
-  );
-  
-  const ALL_COLUMNS = useMemo(() => [
-    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
-    { key: 'Address', header: 'Adres', sortable: true, filterable: true },
-    { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
-    { key: 'terras', header: 'Terras', sortable: true, filterable: true },
-    { key: 'kleedruimte', header: 'Kleedruimte', sortable: true, filterable: true },
-    { key: 'isWheelchairAccessible', header: 'Rolstoel', sortable: true, filterable: true },
-  ], []);
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters]);
-
-  const handleShowDetails = (location) => {
-    setDetailLocation(location);
-    setIsDetailModalOpen(true);
-  };
-  
-  const handleEdit = (location) => {
-    setEditingLocation(location);
-    setIsDetailModalOpen(false);
-    setIsFormModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingLocation(null);
-    setIsFormModalOpen(true);
-  };
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(new Set(filteredLocations.map(l => l.id)));
-    else setSelectedIds(new Set());
-  };
-
-  const handleSelectOne = (e, id) => {
-    const newSelectedIds = new Set(selectedIds);
-    if (e.target.checked) newSelectedIds.add(id);
-    else newSelectedIds.delete(id);
-    setSelectedIds(newSelectedIds);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.size > 0) {
-      onBulkDelete(Array.from(selectedIds));
-      setSelectedIds(new Set());
-    }
-  };
-
-  const isAllSelected = filteredLocations.length > 0 && selectedIds.size === filteredLocations.length;
-  const countText = `Toont ${filteredLocations.length} van ${locations.length} locaties`;
-
-  return (
-    <div>
-      <ViewHeader
-        title="Locaties"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onImport={() => setIsImportModalOpen(true)}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      />
-      
-      {selectedIds.size > 0 && hasEditPermissions && (
-        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
-            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                {icons.trash} <span>Verwijderen</span>
-            </button>
-        </div>
-      )}
-
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3">
-                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  disabled={filteredLocations.length === 0}
-                />
-              </th>
-              {ALL_COLUMNS.map(col => 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={enrichedLocations}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredLocations.map(loc => (
-              <tr key={loc.id} className={selectedIds.has(loc.id) ? 'bg-indigo-50' : ''}>
-                <td className="px-4 py-4">
-                  <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                    checked={selectedIds.has(loc.id)}
-                    onChange={(e) => handleSelectOne(e, loc.id)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">{loc.Name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{loc.Address}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{loc.contactPersonName}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{loc.terras ? 'Ja' : 'Nee'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{loc.kleedruimte ? 'Ja' : 'Nee'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{loc.isWheelchairAccessible ? 'Ja' : 'Nee'}</td>
-                {hasEditPermissions && (
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => handleShowDetails(loc)} className="text-gray-600 hover:text-indigo-900 mr-4">Details</button>
-                    <button onClick={() => handleEdit(loc)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                    <button onClick={() => onDelete(loc.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {isDetailModalOpen && (
-        <LocationDetailModal
-          location={detailLocation}
-          performances={performances}
-          onClose={() => setIsDetailModalOpen(false)}
-          onEdit={hasEditPermissions ? handleEdit : null}
-          onDelete={hasEditPermissions ? () => onDelete(detailLocation.id) : null}
-        />
-      )}
-
-      {isFormModalOpen && (
-        <LocationForm 
-          key={editingLocation ? editingLocation.id : 'new-location'}
-          location={editingLocation}
-          performances={performances}
-          cafeOwners={cafeOwners}
-          onClose={() => setIsFormModalOpen(false)}
-          onSave={(data) => {
-            if (editingLocation) {
-              onUpdate(editingLocation.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsFormModalOpen(false);
-          }}
-        />
-      )}
-      {isImportModalOpen && (
-        <GenericImportModal
-            title="Locaties"
-            requiredColumns={['Name', 'Address']}
-            complexFields={{
-                'openingstijden': '[{"day":"Maandag","open":"10:00","close":"22:00","isClosed":false}]',
-                'geprogrammeerde_voorstellingen': '[{"year":2024,"performanceId":"..."}]'
-            }}
-            onClose={() => setIsImportModalOpen(false)}
-            onImport={(data) => onBulkAdd(data.map(item => ({
-                ...item,
-                ownerIds: item.ownerIds ? item.ownerIds.split(';').map(s => s.trim()) : [],
-                contactPersonId: item.contactPersonId || null,
-                hasDining: item.hasDining === 'true',
-                isWheelchairAccessible: item.isWheelchairAccessible === 'true',
-                terras: item.terras === 'true',
-                kleedruimte: item.kleedruimte === 'true',
-                kan_groep_mee_eten: item.kan_groep_mee_eten === 'true',
-                mag_contact_opnemen_advertentie: item.mag_contact_opnemen_advertentie === 'true',
-                capaciteit: item.capaciteit ? parseInt(item.capaciteit, 10) : 0,
-                maximale_gezelschapsgrootte: item.maximale_gezelschapsgrootte ? parseInt(item.maximale_gezelschapsgrootte, 10) : 0,
-            })))}
-        />
-      )}
-    </div>
-  );
-}
-
-function LocationDetailModal({ location, performances, onClose, onEdit, onDelete }) {
-    const openingstijden = useMemo(() => {
-        try {
-            return JSON.parse(location.openingstijden || '[]');
-        } catch {
-            return [];
-        }
-    }, [location.openingstijden]);
-
-    const geprogrammeerdeVoorstellingen = useMemo(() => {
-        try {
-            const items = JSON.parse(location.geprogrammeerde_voorstellingen || '[]');
-            return items.map(item => ({
-                ...item,
-                performanceName: performances.find(p => p.id === item.performanceId)?.Title || 'Onbekende voorstelling'
-            }));
-        } catch {
-            return [];
-        }
-    }, [location.geprogrammeerde_voorstellingen, performances]);
-    
-    const DetailItem = ({ label, value, children }) => (
-        <div>
-            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
-            {children ? <div className="text-gray-800 mt-1">{children}</div> : <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>}
-        </div>
-    );
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
-                <header className="p-6 border-b flex justify-between items-start">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800">{location.Name}</h2>
-                        <p className="text-gray-500 flex items-center mt-1">
-                            <span className="w-4 h-4 mr-2">{icons.mapPin}</span>
-                            {location.Address}
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
-                </header>
-
-                <main className="p-6 overflow-y-auto space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                        <DetailItem label="Algemeen Contact">
-                            <div className="flex items-center space-x-4">
-                                <span className="flex items-center"><span className="mr-2">{icons.phone}</span> {location.telefoonnummer_algemeen || 'N.v.t.'}</span>
-                                <span className="flex items-center"><span className="mr-2">{icons.mail}</span> {location.mailadres_algemeen || 'N.v.t.'}</span>
-                            </div>
-                        </DetailItem>
-                        
-                        <DetailItem label="Contactpersoon">
-                            {location.contactPerson ? (
-                                <div className="space-y-1">
-                                    <p className="font-semibold">{location.contactPerson.Name}</p>
-                                    <p className="flex items-center text-sm"><span className="w-4 h-4 mr-2">{icons.mail}</span> {location.contactPerson.Email || 'N.v.t.'}</p>
-                                    <p className="flex items-center text-sm"><span className="w-4 h-4 mr-2">{icons.phone}</span> {location.contactPerson.Phone || 'N.v.t.'}</p>
-                                </div>
-                            ) : (
-                                <p className="text-gray-400">Geen contactpersoon geselecteerd.</p>
-                            )}
-                        </DetailItem>
-
-                        <DetailItem label="Capaciteit" value={location.capaciteit} />
-                        <DetailItem label="Maximale Gezelschapsgrootte" value={location.maximale_gezelschapsgrootte} />
-                        <DetailItem label="Deelnamegeld" value={location.deelnamegeld} />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                       <DetailItem label="Faciliteiten">
-                           <div className="flex flex-wrap gap-2 text-sm">
-                               {location.terras && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">Terras</span>}
-                               {location.kleedruimte && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Kleedruimte</span>}
-                               {location.isWheelchairAccessible && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Rolstoeltoegankelijk</span>}
-                               {location.kan_groep_mee_eten && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Groep kan mee-eten</span>}
-                           </div>
-                       </DetailItem>
-                       <DetailItem label="Voorkeur Genre/Thema" value={location.voorkeur_genre_thema} />
-                       <DetailItem label="Techniek" value={location.techniek} />
-                       <DetailItem label="Opmerkingen" value={location.opmerkingen} />
-                    </div>
-
-                    <DetailItem label="Openingstijden">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
-                            {openingstijden.length > 0 ? openingstijden.map(t => (
-                                <div key={t.day} className="flex justify-between p-2 bg-gray-50 rounded-md">
-                                    <span className="font-medium">{t.day}</span>
-                                    <span className={t.isClosed ? 'text-red-500' : 'text-gray-700'}>
-                                        {t.isClosed ? 'Gesloten' : `${t.open} - ${t.close}`}
-                                    </span>
-                                </div>
-                            )) : <p className="text-gray-400 col-span-full">Geen tijden opgegeven.</p>}
-                        </div>
-                    </DetailItem>
-
-                    <DetailItem label="Geprogrammeerde Voorstellingen">
-                        <ul className="space-y-1 list-disc list-inside">
-                            {geprogrammeerdeVoorstellingen.length > 0 ? geprogrammeerdeVoorstellingen.map((item, index) => (
-                                <li key={index}><strong>{item.year}:</strong> {item.performanceName}</li>
-                            )) : <p className="text-gray-400">Geen voorstellingen geprogrammeerd.</p>}
-                        </ul>
-                    </DetailItem>
-                </main>
-
-                <footer className="p-4 bg-gray-50 border-t flex justify-between items-center">
-                    <p className="text-xs text-gray-500">
-                        Advertenties toegestaan: {location.mag_contact_opnemen_advertentie ? 'Ja' : 'Nee'}
-                    </p>
-                    <div className="flex space-x-2">
-                        {onDelete && <button onClick={() => onDelete(location.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2">{icons.trash}<span>Verwijderen</span></button>}
-                        {onEdit && <button onClick={() => onEdit(location)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2">{icons.edit}<span>Bewerken</span></button>}
-                    </div>
-                </footer>
+          <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Naam van het event" className="w-full p-2 border rounded" required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gage</label>
+            <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">€</span>
+                <input type="text" name="gage" value={formData.gage} onChange={handleChange} placeholder="0.00" className="w-full p-2 pl-7 border rounded" required />
             </div>
-        </div>
-    );
-}
-
-
-function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
-    const initialOpeningstijden = useMemo(() => {
-        const days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
-        try {
-            const storedTimes = JSON.parse(location?.openingstijden || '[]');
-            if (Array.isArray(storedTimes) && storedTimes.length === 7) {
-                return storedTimes;
-            }
-        } catch {}
-        return days.map(day => ({ day, open: '', close: '', isClosed: false }));
-    }, [location]);
-
-    const initialProgrammed = useMemo(() => {
-        try {
-            const items = JSON.parse(location?.geprogrammeerde_voorstellingen || '[]');
-            return Array.isArray(items) ? items : [];
-        } catch {
-            return [];
-        }
-    }, [location]);
-
-    const [formData, setFormData] = useState({
-        Name: location?.Name || '',
-        Address: location?.Address || '',
-        googleMapsUrl: location?.googleMapsUrl || '',
-        locationNumber: location?.locationNumber || '',
-        telefoonnummer_algemeen: location?.telefoonnummer_algemeen || '',
-        mailadres_algemeen: location?.mailadres_algemeen || '',
-        terras: location?.terras || false,
-        kleedruimte: location?.kleedruimte || false,
-        techniek: location?.techniek || '',
-        capaciteit: location?.capaciteit || 0,
-        voorkeur_genre_thema: location?.voorkeur_genre_thema || '',
-        maximale_gezelschapsgrootte: location?.maximale_gezelschapsgrootte || 0,
-        deelnamegeld: location?.deelnamegeld || '',
-        kan_groep_mee_eten: location?.kan_groep_mee_eten || false,
-        mag_contact_opnemen_advertentie: location?.mag_contact_opnemen_advertentie || false,
-        opmerkingen: location?.opmerkingen || '',
-        hasDining: location?.hasDining || false,
-        isWheelchairAccessible: location?.isWheelchairAccessible || false,
-        contactPersonId: location?.contactPersonId || '',
-    });
-    const [openingstijden, setOpeningstijden] = useState(initialOpeningstijden);
-    const [programmed, setProgrammed] = useState(initialProgrammed);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    };
-    
-    const handleOpeningstijdenChange = (index, field, value) => {
-        const newTimes = [...openingstijden];
-        newTimes[index][field] = typeof value === 'boolean' ? value : value;
-        setOpeningstijden(newTimes);
-    };
-
-    const handleProgrammedChange = (index, field, value) => {
-        const newProgrammed = [...programmed];
-        newProgrammed[index][field] = value;
-        setProgrammed(newProgrammed);
-    };
-
-    const addProgrammed = () => {
-        setProgrammed([...programmed, { year: new Date().getFullYear(), performanceId: '' }]);
-    };
-
-    const removeProgrammed = (index) => {
-        setProgrammed(programmed.filter((_, i) => i !== index));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const dataToSave = {
-            ...formData,
-            capaciteit: Number(formData.capaciteit) || 0,
-            maximale_gezelschapsgrootte: Number(formData.maximale_gezelschapsgrootte) || 0,
-            openingstijden: JSON.stringify(openingstijden),
-            geprogrammeerde_voorstellingen: JSON.stringify(programmed),
-            ownerIds: location?.ownerIds || [],
-        };
-        onSave(dataToSave);
-    };
-    
-    const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
-    const sortedCafeOwners = useMemo(() => [...cafeOwners].sort((a,b) => a.Name.localeCompare(b.Name)), [cafeOwners]);
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 animate-fade-in">
-            <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl flex flex-col max-h-[90vh]">
-                <header className="p-6 border-b">
-                    <h3 className="text-2xl font-bold">{location ? 'Locatie Bewerken' : 'Nieuwe Locatie'}</h3>
-                </header>
-                <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van de locatie" className="w-full p-2 border rounded" required />
-                        <input type="text" name="Address" value={formData.Address} onChange={handleChange} placeholder="Adres" className="w-full p-2 border rounded" />
-                        <input type="text" name="locationNumber" value={formData.locationNumber} onChange={handleChange} placeholder="Locatienummer" className="w-full p-2 border rounded" />
-                        <input type="url" name="googleMapsUrl" value={formData.googleMapsUrl} onChange={handleChange} placeholder="Google Maps URL" className="w-full p-2 border rounded" />
-                        <input type="tel" name="telefoonnummer_algemeen" value={formData.telefoonnummer_algemeen} onChange={handleChange} placeholder="Telefoonnummer" className="w-full p-2 border rounded" />
-                        <input type="email" name="mailadres_algemeen" value={formData.mailadres_algemeen} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
-                    </div>
-                    
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon (Café-eigenaar)</label>
-                        <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
-                            <option value="">Kies een contactpersoon</option>
-                            {sortedCafeOwners.map(owner => (
-                                <option key={owner.id} value={owner.id}>{owner.Name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input type="number" name="capaciteit" value={formData.capaciteit} onChange={handleChange} placeholder="Capaciteit" className="w-full p-2 border rounded" />
-                        <input type="number" name="maximale_gezelschapsgrootte" value={formData.maximale_gezelschapsgrootte} onChange={handleChange} placeholder="Max. gezelschapsgrootte" className="w-full p-2 border rounded" />
-                        <input type="text" name="deelnamegeld" value={formData.deelnamegeld} onChange={handleChange} placeholder="Deelnamegeld" className="w-full p-2 border rounded" />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <textarea name="voorkeur_genre_thema" value={formData.voorkeur_genre_thema} onChange={handleChange} placeholder="Voorkeur genre/thema" className="w-full p-2 border rounded h-24"></textarea>
-                       <textarea name="techniek" value={formData.techniek} onChange={handleChange} placeholder="Notities over techniek" className="w-full p-2 border rounded h-24"></textarea>
-                       <textarea name="opmerkingen" value={formData.opmerkingen} onChange={handleChange} placeholder="Algemene opmerkingen" className="w-full p-2 border rounded h-24"></textarea>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="terras" checked={formData.terras} onChange={handleChange} /><span>Terras</span></label>
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="kleedruimte" checked={formData.kleedruimte} onChange={handleChange} /><span>Kleedruimte</span></label>
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="kan_groep_mee_eten" checked={formData.kan_groep_mee_eten} onChange={handleChange} /><span>Groep kan mee-eten</span></label>
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="mag_contact_opnemen_advertentie" checked={formData.mag_contact_opnemen_advertentie} onChange={handleChange} /><span>OK voor advertenties</span></label>
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="hasDining" checked={formData.hasDining} onChange={handleChange} /><span>Eetgelegenheid</span></label>
-                        <label className="flex items-center space-x-2"><input type="checkbox" name="isWheelchairAccessible" checked={formData.isWheelchairAccessible} onChange={handleChange} /><span>Rolstoeltoegankelijk</span></label>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-2">Openingstijden</h4>
-                        <div className="space-y-2">
-                            {openingstijden.map((day, index) => (
-                                <div key={index} className="grid grid-cols-4 gap-2 items-center">
-                                    <span className="font-medium">{day.day}</span>
-                                    <input type="time" value={day.open} onChange={(e) => handleOpeningstijdenChange(index, 'open', e.target.value)} disabled={day.isClosed} className="w-full p-1 border rounded disabled:bg-gray-200" />
-                                    <input type="time" value={day.close} onChange={(e) => handleOpeningstijdenChange(index, 'close', e.target.value)} disabled={day.isClosed} className="w-full p-1 border rounded disabled:bg-gray-200" />
-                                    <label className="flex items-center space-x-2"><input type="checkbox" checked={day.isClosed} onChange={(e) => handleOpeningstijdenChange(index, 'isClosed', e.target.checked)} /><span>Gesloten</span></label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-2">Geprogrammeerde Voorstellingen</h4>
-                        <div className="space-y-2">
-                            {programmed.map((item, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                    <input type="number" value={item.year} onChange={e => handleProgrammedChange(index, 'year', e.target.value)} placeholder="Jaar" className="p-2 border rounded w-24" />
-                                    <select value={item.performanceId} onChange={e => handleProgrammedChange(index, 'performanceId', e.target.value)} className="w-full p-2 border rounded">
-                                        <option value="">Kies een voorstelling</option>
-                                        {sortedPerformances.map(p => <option key={p.id} value={p.id}>{p.Title}</option>)}
-                                    </select>
-                                    <button type="button" onClick={() => removeProgrammed(index)} className="text-red-500 p-2">{icons.trash}</button>
-                                </div>
-                            ))}
-                        </div>
-                        <button type="button" onClick={addProgrammed} className="mt-2 text-sm text-indigo-600 hover:underline">{icons.plus} Voorstelling toevoegen</button>
-                    </div>
-                    
-                    <div className="flex justify-end space-x-4 pt-4 border-t">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Opslaan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
-function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete, hasEditPermissions, onQuickView }) {
-  const [showPast, setShowPast] = useState(false); 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [editingExecution, setEditingExecution] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  
-  const enrichedExecutionsBase = useMemo(() => {
-    const now = new Date();
-    return executions
-        .map(exec => ({
-            ...exec,
-            performance: performances.find(p => p.id === exec.performanceId),
-            location: locations.find(l => l.id === exec.locationId),
-        }))
-        .filter(exec => exec.performance && exec.location)
-        .map(exec => ({
-            ...exec,
-            performanceTitle: exec.performance.Title,
-            locationName: exec.location.Name,
-        }))
-        .filter(exec => showPast || new Date(exec.DateTime) >= now);
-  }, [executions, performances, locations, showPast]);
-  
-  const { 
-    filteredAndSortedItems: filteredExecutions, 
-    searchTerm, 
-    setSearchTerm, 
-    sortConfig, 
-    requestSort,
-    filters,
-    handleFilterChange
-  } = useSortAndFilter(
-      enrichedExecutionsBase,
-      'DateTime',
-      ['performanceTitle', 'locationName']
-  );
-
-  const ALL_COLUMNS = useMemo(() => [
-    { key: 'performanceTitle', header: 'Voorstelling', sortable: true, filterable: true },
-    { key: 'locationName', header: 'Locatie', sortable: true, filterable: true },
-    { key: 'DateTime', header: 'Datum & Tijd', sortable: true, filterable: false },
-    { key: 'expectedCrowd', header: 'Verwachte Drukte', sortable: true, filterable: true },
-    { key: 'quietRoute', header: 'Rustige Route', sortable: true, filterable: true },
-    { key: 'hasNgt', header: 'NGT', sortable: true, filterable: true },
-  ], []);
-
-  const [visibleColumns, setVisibleColumns] = useState(new Set(['performanceTitle', 'locationName', 'DateTime']));
-
-  const toggleColumn = (key) => {
-    setVisibleColumns(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(key)) newSet.delete(key);
-        else newSet.add(key);
-        return newSet;
-    });
-  };
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters, showPast]);
-
-  const handleEdit = (execution) => {
-    setEditingExecution(execution);
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingExecution(null);
-    setIsModalOpen(true);
-  };
-  
-  const formatDateTime = (isoString) => {
-    if (!isoString) return 'N.v.t.';
-    const date = new Date(isoString);
-    return date.toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' });
-  };
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(new Set(filteredExecutions.map(ex => ex.id)));
-    else setSelectedIds(new Set());
-  };
-
-  const handleSelectOne = (e, id) => {
-    const newSelectedIds = new Set(selectedIds);
-    if (e.target.checked) newSelectedIds.add(id);
-    else newSelectedIds.delete(id);
-    setSelectedIds(newSelectedIds);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.size > 0) {
-      onBulkDelete(Array.from(selectedIds));
-      setSelectedIds(new Set());
-    }
-  };
-  
-  const isAllSelected = filteredExecutions.length > 0 && selectedIds.size === filteredExecutions.length;
-  const countText = `Toont ${filteredExecutions.length} van ${executions.length} uitvoeringen`;
-  
-  return (
-    <div>
-      <ViewHeader
-        title="Uitvoeringen"
-        countText={countText}
-        onAddNew={handleAddNew}
-        onImport={() => setIsImportModalOpen(true)}
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-        hasEditPermissions={hasEditPermissions}
-      >
-        <button 
-            onClick={() => setShowPast(!showPast)} 
-            className="p-2 border rounded-lg shadow-sm bg-white hover:bg-gray-100"
-          >
-            {showPast ? 'Verleden verbergen' : 'Verleden tonen'}
-        </button>
-        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
-      </ViewHeader>
-
-      {selectedIds.size > 0 && hasEditPermissions && (
-        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
-            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
-            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
-                {icons.trash} <span>Verwijderen</span>
-            </button>
-        </div>
-      )}
-
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  disabled={filteredExecutions.length === 0}
-                />
-              </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={enrichedExecutionsBase}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredExecutions.length > 0 ? filteredExecutions.map(exec => (
-                  <tr key={exec.id} className={selectedIds.has(exec.id) ? 'bg-indigo-50' : ''}>
-                    <td className="px-4 py-4">
-                       <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                        checked={selectedIds.has(exec.id)}
-                        onChange={(e) => handleSelectOne(e, exec.id)}
-                      />
-                    </td>
-                    {visibleColumns.has('performanceTitle') && <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        <button onClick={() => onQuickView({ item: exec.performance, type: 'performance' })} className="text-indigo-600 hover:underline">
-                            {exec.performance.Title}
-                        </button>
-                    </td>}
-                    {visibleColumns.has('locationName') && <td className="px-6 py-4 whitespace-nowrap">
-                        <button onClick={() => onQuickView({ item: exec.location, type: 'location' })} className="text-indigo-600 hover:underline">
-                            {exec.location.Name}
-                        </button>
-                    </td>}
-                    {visibleColumns.has('DateTime') && <td className="px-6 py-4 whitespace-nowrap">{formatDateTime(exec.DateTime)}</td>}
-                    {visibleColumns.has('expectedCrowd') && <td className="px-6 py-4 whitespace-nowrap">{exec.expectedCrowd}</td>}
-                    {visibleColumns.has('quietRoute') && <td className="px-6 py-4 whitespace-nowrap">{exec.quietRoute ? 'Ja' : 'Nee'}</td>}
-                    {visibleColumns.has('hasNgt') && <td className="px-6 py-4 whitespace-nowrap">{exec.hasNgt ? 'Ja' : 'Nee'}</td>}
-                    {hasEditPermissions && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button onClick={() => handleEdit(exec)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                          <button onClick={() => onDelete(exec.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                        </td>
-                    )}
-                  </tr>
-                )) : (
-              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen uitvoeringen gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <ExecutionForm 
-          execution={editingExecution} 
-          performances={performances}
-          locations={locations}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(data) => {
-            if (editingExecution) {
-              onUpdate(editingExecution.id, data);
-            } else {
-              onAdd(data);
-            }
-            setIsModalOpen(false);
-          }}
-          onSaveBulk={(data) => {
-            onBulkAdd(data);
-            setIsModalOpen(false);
-          }}
-        />
-      )}
-       {isImportModalOpen && (
-        <GenericImportModal
-            title="Uitvoeringen"
-            requiredColumns={['performanceId', 'locationId', 'DateTime']}
-            onClose={() => setIsImportModalOpen(false)}
-            onImport={(data) => onBulkAdd(data.map(item => ({
-                performanceId: item.performanceId || null,
-                locationId: item.locationId || null,
-                DateTime: item.DateTime ? new Date(item.DateTime).toISOString() : null,
-                expectedCrowd: item.expectedCrowd || '',
-                quietRoute: item.quietRoute === 'true',
-                hasNgt: item.hasNgt === 'true',
-            })))}
-        />
-      )}
-    </div>
-  );
-}
-
-function ExecutionForm({ execution, performances, locations, onClose, onSave, onSaveBulk }) {
-  const [performanceId, setPerformanceId] = useState(execution?.performanceId || '');
-  const [locationId, setLocationId] = useState(execution?.locationId || '');
-  const [datetimes, setDatetimes] = useState(
-    execution 
-      ? [{ date: new Date(execution.DateTime).toISOString().split('T')[0], time: new Date(execution.DateTime).toTimeString().slice(0, 5) }]
-      : [{ date: '', time: '' }]
-  );
-  const [extraData, setExtraData] = useState({
-      expectedCrowd: execution?.expectedCrowd || '',
-      quietRoute: execution?.quietRoute || false,
-      hasNgt: execution?.hasNgt || false,
-  });
-  
-  const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
-  const sortedLocations = useMemo(() => [...locations].sort((a,b) => a.Name.localeCompare(b.Name)), [locations]);
-
-  const handleExtraDataChange = (e) => {
-      const { name, value, type, checked } = e.target;
-      setExtraData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleDatetimeChange = (index, field, value) => {
-    const newDatetimes = [...datetimes];
-    newDatetimes[index][field] = value;
-    setDatetimes(newDatetimes);
-  };
-
-  const addDatetime = () => {
-    setDatetimes([...datetimes, { date: '', time: '' }]);
-  };
-
-  const removeDatetime = (index) => {
-    const newDatetimes = datetimes.filter((_, i) => i !== index);
-    setDatetimes(newDatetimes);
-  };
-
-  const handleSubmit = (e) => { 
-      e.preventDefault();
-      
-      const baseData = {
-          performanceId,
-          locationId,
-          ...extraData
-      };
-
-      if (execution) {
-        const dateTime = new Date(`${datetimes[0].date}T${datetimes[0].time}`);
-        onSave({ 
-            ...baseData,
-            DateTime: dateTime.toISOString()
-        });
-      } else {
-        const executionsToCreate = datetimes
-            .filter(dt => dt.date && dt.time)
-            .map(dt => {
-                const dateTime = new Date(`${dt.date}T${dt.time}`);
-                return {
-                    ...baseData,
-                    DateTime: dateTime.toISOString()
-                };
-            });
-        
-        if (executionsToCreate.length > 0) {
-            onSaveBulk(executionsToCreate);
-        }
-      }
-  };
-
-  return (
-     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
-        <h3 className="text-2xl font-bold mb-6">{execution ? 'Uitvoering Bewerken' : 'Nieuwe Uitvoeringen'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <select name="performanceId" value={performanceId} onChange={(e) => setPerformanceId(e.target.value)} className="w-full p-2 border rounded" required>
-            <option value="">Kies een voorstelling</option>
-            {sortedPerformances.map(p => <option key={p.id} value={p.id}>{p.Title}</option>)}
-          </select>
-          <select name="locationId" value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full p-2 border rounded" required>
-            <option value="">Kies een locatie</option>
-            {sortedLocations.map(l => <option key={l.id} value={l.id}>{l.Name}</option>)}
-          </select>
-          
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">Datum & Tijd</label>
-            {datetimes.map((dt, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                    <input type="date" value={dt.date} onChange={(e) => handleDatetimeChange(index, 'date', e.target.value)} className="w-full p-2 border rounded" required />
-                    <input type="time" value={dt.time} onChange={(e) => handleDatetimeChange(index, 'time', e.target.value)} className="w-full p-2 border rounded" required />
-                    <button type="button" onClick={() => removeDatetime(index)} disabled={datetimes.length <= 1} className="text-red-500 hover:text-red-700 disabled:opacity-50 p-2">
-                        {icons.trash}
-                    </button>
-                </div>
-            ))}
           </div>
-          
-          {!execution && (
-            <button type="button" onClick={addDatetime} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center space-x-1">
-                {icons.plus}
-                <span>Datum en tijd toevoegen</span>
-            </button>
-          )}
-
-          <input type="text" name="expectedCrowd" value={extraData.expectedCrowd} onChange={handleExtraDataChange} placeholder="Verwachte drukte" className="w-full p-2 border rounded" />
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex items-center space-x-2"><input type="checkbox" name="quietRoute" checked={extraData.quietRoute} onChange={handleExtraDataChange} /><span>Rustige Route</span></label>
-            <label className="flex items-center space-x-2"><input type="checkbox" name="hasNgt" checked={extraData.hasNgt} onChange={handleExtraDataChange} /><span>NGT</span></label>
-          </div>
-
-          <div className="flex justify-end space-x-4 pt-4">
+          <input type="url" name="sponsorLogoUrl" value={formData.sponsorLogoUrl} onChange={handleChange} placeholder="URL Logo Hoofdsponsor" className="w-full p-2 border rounded" />
+          <input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} placeholder="URL Kaart" className="w-full p-2 border rounded" />
+          <label className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            <input type="checkbox" name="InApp" checked={formData.InApp} onChange={handleChange} className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+            <span className="font-medium text-gray-700">Zichtbaar in de app?</span>
+          </label>
+          <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
           </div>
@@ -3219,16 +2293,19 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
   const [editingEvent, setEditingEvent] = useState(null);
   const [manageExecutionsModalInfo, setManageExecutionsModalInfo] = useState({ isOpen: false, event: null });
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list');
+  const [detailEvent, setDetailEvent] = useState(null);
   
   const ALL_COLUMNS = useMemo(() => [
     { key: 'Name', header: 'Naam', sortable: true, filterable: true },
     { key: 'gage', header: 'Gage', sortable: true, filterable: true },
     { key: 'executionCount', header: 'Aantal Uitvoeringen', sortable: false, filterable: false },
+    { key: 'InApp', header: 'In App', sortable: true, filterable: true },
     { key: 'sponsorLogoUrl', header: 'Sponsor Logo', sortable: false, filterable: false },
     { key: 'mapUrl', header: 'Kaart URL', sortable: false, filterable: false },
   ], []);
 
-  const [visibleColumns, setVisibleColumns] = useState(new Set(['Name', 'gage', 'executionCount']));
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Name', 'gage', 'executionCount', 'InApp']));
 
   const toggleColumn = (key) => {
     setVisibleColumns(prev => {
@@ -3260,9 +2337,10 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, sortConfig, filters]);
+  }, [searchTerm, sortConfig, filters, viewMode]);
 
   const handleEdit = (event) => {
+    setDetailEvent(null);
     setEditingEvent(event);
     setIsModalOpen(true);
   };
@@ -3301,9 +2379,15 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
         countText={countText}
         onAddNew={handleAddNew}
         onImport={() => setIsImportModalOpen(true)}
+        onExport={exportTo}
+        exportData={filteredEvents}
+        exportColumns={ALL_COLUMNS}
+        exportFilename="events"
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
         hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       >
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
@@ -3317,59 +2401,84 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  disabled={filteredEvents.length === 0}
-                />
-              </th>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={enrichedEvents}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredEvents.length > 0 ? filteredEvents.map(event => (
-              <tr key={event.id} className={selectedIds.has(event.id) ? 'bg-indigo-50' : ''}>
-                <td className="px-4 py-4">
-                   <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                    checked={selectedIds.has(event.id)}
-                    onChange={(e) => handleSelectOne(e, event.id)}
+      {viewMode === 'list' && (
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left">
+                  <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    disabled={filteredEvents.length === 0}
                   />
-                </td>
-                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap font-medium">{event.Name}</td>}
-                {visibleColumns.has('gage') && <td className="px-6 py-4 whitespace-nowrap">€{event.gage || 0}</td>}
-                {visibleColumns.has('executionCount') && <td className="px-6 py-4 whitespace-nowrap">{event.executionCount}</td>}
-                {visibleColumns.has('sponsorLogoUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.sponsorLogoUrl}</td>}
-                {visibleColumns.has('mapUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.mapUrl}</td>}
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => setManageExecutionsModalInfo({isOpen: true, event: event})} className="text-gray-600 hover:text-indigo-900 mr-4">{icons.calendar}</button>
-                      <button onClick={() => handleEdit(event)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(event.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
+                </th>
+                {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                  <SortableTh 
+                      key={col.key} 
+                      column={col} 
+                      sortConfig={sortConfig} 
+                      requestSort={requestSort}
+                      filters={filters}
+                      handleFilterChange={handleFilterChange}
+                      allItems={enrichedEvents}
+                  />
                 )}
+                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
               </tr>
-            )) : (
-              <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen events gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredEvents.length > 0 ? filteredEvents.map(event => (
+                <tr key={event.id} className={selectedIds.has(event.id) ? 'bg-indigo-50' : ''}>
+                  <td className="px-4 py-4">
+                     <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      checked={selectedIds.has(event.id)}
+                      onChange={(e) => handleSelectOne(e, event.id)}
+                    />
+                  </td>
+                  {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap font-medium">{event.Name}</td>}
+                  {visibleColumns.has('gage') && <td className="px-6 py-4 whitespace-nowrap">€{event.gage || 0}</td>}
+                  {visibleColumns.has('executionCount') && <td className="px-6 py-4 whitespace-nowrap">{event.executionCount}</td>}
+                  {visibleColumns.has('InApp') && <td className="px-6 py-4 whitespace-nowrap">
+                      <ToggleSwitch
+                          checked={event.InApp || false}
+                          onChange={(isChecked) => onUpdate(event.id, { InApp: isChecked })}
+                          disabled={!hasEditPermissions}
+                      />
+                  </td>}
+                  {visibleColumns.has('sponsorLogoUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.sponsorLogoUrl}</td>}
+                  {visibleColumns.has('mapUrl') && <td className="px-6 py-4 whitespace-nowrap truncate max-w-xs">{event.mapUrl}</td>}
+                  {hasEditPermissions && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onClick={() => setManageExecutionsModalInfo({isOpen: true, event: event})} className="text-gray-600 hover:text-indigo-900 mr-4">{icons.calendar}</button>
+                        <button onClick={() => handleEdit(event)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                        <button onClick={() => onDelete(event.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                      </td>
+                  )}
+                </tr>
+              )) : (
+                <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen events gevonden.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredEvents.map(event => (
+                <div key={event.id} onClick={() => setDetailEvent(event)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{event.Name}</h3>
+                        <p className="text-gray-500 text-sm mt-1">{event.executionCount} uitvoeringen</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-sm font-semibold text-gray-700">Gage: €{event.gage || '0'}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
 
       {isModalOpen && (
         <EventForm 
@@ -3385,6 +2494,17 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
           }}
         />
       )}
+      {detailEvent && (
+        <EventDetailModal 
+            event={detailEvent}
+            executions={executions}
+            performances={performances}
+            locations={locations}
+            onClose={() => setDetailEvent(null)}
+            onEdit={hasEditPermissions ? handleEdit : null}
+            onDelete={hasEditPermissions ? () => onDelete(detailEvent.id) : null}
+        />
+      )}
       {isImportModalOpen && (
         <GenericImportModal
             title="Events"
@@ -3396,6 +2516,7 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
                 gage: String(item.gage || '0'),
                 sponsorLogoUrl: item.sponsorLogoUrl || '',
                 mapUrl: item.mapUrl || '',
+                InApp: item.InApp === 'true',
             })))}
         />
       )}
@@ -3413,55 +2534,63 @@ function EventsView({ events, executions, performances, locations, onAdd, onUpda
   );
 }
 
-function EventForm({ event, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-      name: event?.Name || '',
-      gage: event?.gage || 0,
-      sponsorLogoUrl: event?.sponsorLogoUrl || '',
-      mapUrl: event?.mapUrl || '',
-  });
-  
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-        ...prev,
-        [name]: value
-    }));
-  };
-  
-  const handleSubmit = (e) => { 
-    e.preventDefault(); 
-    onSave({ 
-        Name: formData.name, 
-        gage: String(formData.gage || '0'),
-        sponsorLogoUrl: formData.sponsorLogoUrl,
-        mapUrl: formData.mapUrl,
-        executionIds: event?.executionIds || [] 
-    }); 
-  };
-  return (
-     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
-        <h3 className="text-2xl font-bold mb-6">{event ? 'Event Bewerken' : 'Nieuw Event'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Naam van het event" className="w-full p-2 border rounded" required />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gage</label>
-            <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">€</span>
-                <input type="text" name="gage" value={formData.gage} onChange={handleChange} placeholder="0.00" className="w-full p-2 pl-7 border rounded" required />
+function EventDetailModal({ event, executions, performances, locations, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value, children }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            {children ? <div className="text-gray-800 mt-1">{children}</div> : <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>}
+        </div>
+    );
+    
+    const eventExecutions = useMemo(() => {
+        return (event.executionIds || [])
+            .map(id => executions.find(e => e.id === id))
+            .filter(Boolean)
+            .map(exec => ({
+                ...exec,
+                performanceTitle: performances.find(p => p.id === exec.performanceId)?.Title || 'Onbekend',
+                locationName: locations.find(l => l.id === exec.locationId)?.Name || 'Onbekend',
+            }))
+            .sort((a, b) => new Date(a.DateTime) - new Date(b.DateTime));
+    }, [event, executions, performances, locations]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{event.Name}</h2>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem label="Gage" value={`€${event.gage || 0}`} />
+                        <DetailItem label="Sponsor Logo URL" value={event.sponsorLogoUrl} />
+                        <DetailItem label="Kaart URL" value={event.mapUrl} />
+                        <DetailItem label="In App Zichtbaar" value={event.InApp ? 'Ja' : 'Nee'} />
+                    </div>
+                    <DetailItem label="Gekoppelde Uitvoeringen">
+                        {eventExecutions.length > 0 ? (
+                            <ul className="list-disc list-inside space-y-1">
+                                {eventExecutions.map(exec => (
+                                    <li key={exec.id}>{exec.performanceTitle} @ {exec.locationName} ({new Date(exec.DateTime).toLocaleString('nl-NL')})</li>
+                                ))}
+                            </ul>
+                        ) : <p className="text-gray-400">Geen uitvoeringen gekoppeld.</p>}
+                    </DetailItem>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center">
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(event.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(event)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
             </div>
-          </div>
-          <input type="url" name="sponsorLogoUrl" value={formData.sponsorLogoUrl} onChange={handleChange} placeholder="URL Logo Hoofdsponsor" className="w-full p-2 border rounded" />
-          <input type="url" name="mapUrl" value={formData.mapUrl} onChange={handleChange} placeholder="URL Kaart" className="w-full p-2 border rounded" />
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }
 
 function ManageExecutionsForEventModal({ event, allExecutions, allPerformances, allLocations, onClose, onUpdateEvent }) {
@@ -3560,21 +2689,2119 @@ function ManageExecutionsForEventModal({ event, allExecutions, allPerformances, 
     );
 }
 
-// Dit bestand bevat de overige view-componenten voor de applicatie.
+// --- NIEUWE MARKETING VIEW ---
+function MarketingView({ marketingItems, performances, companies, executions, onAdd, onUpdate, onDelete, hasEditPermissions }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const [viewMode, setViewMode] = useState('list');
+    const [detailItem, setDetailItem] = useState(null);
 
-// --- Vrijwilligers View ---
-// Toont een gefilterde lijst van contacten die de rol 'vrijwilliger' hebben.
+    const enrichedMarketingItems = useMemo(() => {
+        return marketingItems.map(item => {
+            const performance = performances.find(p => p.id === item.PerformanceId);
+            const company = performance ? companies.find(c => c.id === performance.companyId) : null;
+            return {
+                ...item,
+                performanceName: performance?.Title || 'N.v.t.',
+                companyName: company?.Name || 'N.v.t.',
+            };
+        });
+    }, [marketingItems, performances, companies]);
+
+    const { 
+        filteredAndSortedItems, 
+        searchTerm, 
+        setSearchTerm, 
+        sortConfig, 
+        requestSort,
+        filters,
+        handleFilterChange
+    } = useSortAndFilter(enrichedMarketingItems, 'performanceName', ['performanceName', 'companyName']);
+
+    const columns = [
+        { key: 'performanceName', header: 'Naam Voorstelling', sortable: true, filterable: true },
+        { key: 'companyName', header: 'Gezelschap', sortable: true, filterable: true },
+        { key: 'VoorstellingstekstNL', header: 'Tekst NL (kort)', sortable: false, filterable: false },
+        { key: 'Keywords', header: 'Keywords', sortable: false, filterable: false },
+    ];
+
+    const handleEdit = (item) => {
+        setDetailItem(null);
+        setEditingItem(item);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingItem(null);
+        setIsModalOpen(true);
+    };
+
+    const countText = `Toont ${filteredAndSortedItems.length} van ${marketingItems.length} marketing items.`;
+
+    return (
+        <div>
+            <ViewHeader
+                title="Marketing"
+                countText={countText}
+                onAddNew={hasEditPermissions ? handleAddNew : null}
+                onSearch={setSearchTerm}
+                searchTerm={searchTerm}
+                hasEditPermissions={hasEditPermissions}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+            />
+            
+            {viewMode === 'list' && (
+                <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                {columns.map(col => 
+                                    <SortableTh 
+                                        key={col.key} 
+                                        column={col} 
+                                        sortConfig={sortConfig} 
+                                        requestSort={requestSort}
+                                        filters={filters}
+                                        handleFilterChange={handleFilterChange}
+                                        allItems={enrichedMarketingItems}
+                                    />
+                                )}
+                                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredAndSortedItems.map(item => (
+                                <tr key={item.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.performanceName}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{item.companyName}</td>
+                                    <td className="px-6 py-4 text-gray-500 truncate max-w-xs">{item.VoorstellingstekstNL}</td>
+                                    <td className="px-6 py-4 text-gray-500 truncate max-w-xs">{(item.Keywords || []).join(', ')}</td>
+                                    {hasEditPermissions && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                            <button onClick={() => handleEdit(item)} title="Bewerken" className="text-indigo-600 hover:text-indigo-900 p-1">{icons.edit}</button>
+                                            <button onClick={() => onDelete(item.id)} title="Verwijderen" className="text-red-600 hover:text-red-900 p-1">{icons.trash}</button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {viewMode === 'card' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredAndSortedItems.map(item => (
+                        <div key={item.id} onClick={() => setDetailItem(item)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-800 truncate">{item.performanceName}</h3>
+                                <p className="text-indigo-500 text-sm truncate">{item.companyName}</p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                <p className="text-xs text-gray-500 truncate">Keywords: {(item.Keywords || []).join(', ')}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {isModalOpen && hasEditPermissions && (
+                <MarketingForm
+                    item={editingItem}
+                    performances={performances}
+                    companies={companies}
+                    executions={executions}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={(data) => {
+                        if (editingItem) onUpdate(editingItem.id, data);
+                        else onAdd(data);
+                        setIsModalOpen(false);
+                    }}
+                />
+            )}
+            {detailItem && (
+                <MarketingDetailModal 
+                    item={detailItem}
+                    onClose={() => setDetailItem(null)}
+                    onEdit={hasEditPermissions ? handleEdit : null}
+                    onDelete={hasEditPermissions ? () => onDelete(detailItem.id) : null}
+                />
+            )}
+        </div>
+    );
+}
+
+function MarketingDetailModal({ item, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value, isText = false }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            {isText ? (
+                <p className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded-md mt-1">{value || <span className="text-gray-400">N.v.t.</span>}</p>
+            ) : (
+                <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{item.performanceName}</h2>
+                        <p className="text-gray-500 mt-1">{item.companyName}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <DetailItem label="Voorstellingstekst NL" value={item.VoorstellingstekstNL} isText={true} />
+                        <DetailItem label="Voorstellingstekst EN" value={item.VoorstellingstekstENG} isText={true} />
+                        <DetailItem label="Bio NL" value={item.BioNL} isText={true} />
+                        <DetailItem label="Bio EN" value={item.BioENG} isText={true} />
+                    </div>
+                    <DetailItem label="Keywords" value={(item.Keywords || []).join(', ')} />
+                    <DetailItem label="Credits" value={item.Credits} isText={true} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <DetailItem label="Afbeelding 1 URL" value={item.Afbeelding1} />
+                        <DetailItem label="Afbeelding 2 URL" value={item.Afbeelding2} />
+                    </div>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center space-x-2">
+                    {onDelete && <button onClick={() => onDelete(item.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{icons.trash}<span> Verwijderen</span></button>}
+                    {onEdit && <button onClick={() => onEdit(item)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{icons.edit}<span> Bewerken</span></button>}
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+function MarketingForm({ item, performances, companies, executions, onClose, onSave }) {
+    const [formData, setFormData] = useState({
+        PerformanceId: item?.PerformanceId || '',
+        VoorstellingstekstNL: item?.VoorstellingstekstNL || '',
+        VoorstellingstekstENG: item?.VoorstellingstekstENG || '',
+        BioNL: item?.BioNL || '',
+        BioENG: item?.BioENG || '',
+        Keywords: item?.Keywords || [''],
+        Credits: item?.Credits || '',
+        Afbeelding1: item?.Afbeelding1 || '',
+        Afbeelding2: item?.Afbeelding2 || '',
+    });
+    const [companyName, setCompanyName] = useState('');
+
+    const futurePerformances = useMemo(() => {
+        const now = new Date();
+        const futureExecutionPerfIds = new Set(
+            executions
+                .filter(e => new Date(e.DateTime) > now)
+                .map(e => e.performanceId)
+        );
+        return performances
+            .filter(p => futureExecutionPerfIds.has(p.id))
+            .sort((a,b) => a.Title.localeCompare(b.Title));
+    }, [executions, performances]);
+
+    useEffect(() => {
+        if (formData.PerformanceId) {
+            const performance = performances.find(p => p.id === formData.PerformanceId);
+            const company = performance ? companies.find(c => c.id === performance.companyId) : null;
+            setCompanyName(company?.Name || 'Gezelschap niet gevonden');
+        } else {
+            setCompanyName('');
+        }
+    }, [formData.PerformanceId, performances, companies]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleKeywordChange = (index, value) => {
+        const newKeywords = [...formData.Keywords];
+        newKeywords[index] = value;
+        setFormData(prev => ({ ...prev, Keywords: newKeywords }));
+    };
+
+    const addKeyword = () => {
+        setFormData(prev => ({ ...prev, Keywords: [...prev.Keywords, ''] }));
+    };
+
+    const removeKeyword = (index) => {
+        setFormData(prev => ({ ...prev, Keywords: prev.Keywords.filter((_, i) => i !== index) }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const dataToSave = {
+            ...formData,
+            Keywords: formData.Keywords.filter(k => k.trim() !== ''), // Verwijder lege keywords
+        };
+        onSave(dataToSave);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-3xl shadow-xl max-h-full overflow-y-auto">
+                <h3 className="text-2xl font-bold mb-6">{item ? 'Marketing Info Bewerken' : 'Nieuwe Marketing Info'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Naam voorstelling</label>
+                        <select name="PerformanceId" value={formData.PerformanceId} onChange={handleChange} className="w-full p-2 border rounded" required>
+                            <option value="">Selecteer een voorstelling</option>
+                            {futurePerformances.map(p => <option key={p.id} value={p.id}>{p.Title}</option>)}
+                        </select>
+                    </div>
+                    {companyName && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Gezelschap</label>
+                            <p className="mt-1 p-2 bg-gray-100 rounded-md">{companyName}</p>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Voorstellingstekst Nederlands</label>
+                            <textarea name="VoorstellingstekstNL" value={formData.VoorstellingstekstNL} onChange={handleChange} maxLength="1000" placeholder="Max 1000 tekens" className="w-full p-2 border rounded h-32"></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Voorstellingstekst Engels</label>
+                            <textarea name="VoorstellingstekstENG" value={formData.VoorstellingstekstENG} onChange={handleChange} maxLength="1000" placeholder="Max 1000 characters" className="w-full p-2 border rounded h-32"></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Bio Nederlands</label>
+                            <textarea name="BioNL" value={formData.BioNL} onChange={handleChange} maxLength="1000" placeholder="Max 1000 tekens" className="w-full p-2 border rounded h-32"></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Bio Engels</label>
+                            <textarea name="BioENG" value={formData.BioENG} onChange={handleChange} maxLength="1000" placeholder="Max 1000 characters" className="w-full p-2 border rounded h-32"></textarea>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                        <div className="space-y-2">
+                            {formData.Keywords.map((keyword, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                    <input type="text" value={keyword} onChange={(e) => handleKeywordChange(index, e.target.value)} placeholder={`Keyword ${index + 1}`} className="w-full p-2 border rounded" />
+                                    <button type="button" onClick={() => removeKeyword(index)} className="text-red-500 p-2">{icons.trash}</button>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={addKeyword} className="mt-2 text-sm text-indigo-600 hover:underline">{icons.plus} Keyword toevoegen</button>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
+                        <textarea name="Credits" value={formData.Credits} onChange={handleChange} maxLength="500" placeholder="Max 500 tekens" className="w-full p-2 border rounded h-24"></textarea>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Afbeelding 1 URL</label>
+                            <input type="url" name="Afbeelding1" value={formData.Afbeelding1} onChange={handleChange} placeholder="https://..." className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Afbeelding 2 URL</label>
+                            <input type="url" name="Afbeelding2" value={formData.Afbeelding2} onChange={handleChange} placeholder="https://..." className="w-full p-2 border rounded" />
+                        </div>
+                    </div>
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function HospitalityModal({ company, onClose }) {
+    if (!company) return null;
+
+    const renderList = (items) => {
+        if (!items || items.length === 0) return <span className="text-gray-500">N.v.t.</span>;
+        return (
+            <ul className="list-disc list-inside">
+                {items.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+        );
+    };
+
+    const details = [
+        { label: "Aantal personen makersdag", value: company.AantalPersonenMakersdag || '0' },
+        { label: "Namen personen makersdag", value: renderList(company.NamenMakersdag) },
+        { label: "Aantal personen kick-off (ochtend)", value: company.AantalPersonenOchtendKickOff || '0' },
+        { label: "Namen kick-off (ochtend)", value: renderList(company.NamenOchtendKickOff) },
+        { label: "Aantal personen kick-off (middag)", value: company.AantalPersonenMiddagKickOff || '0' },
+        { label: "Namen kick-off (middag)", value: renderList(company.NamenMiddagKickOff) },
+        { label: "Aantal personen overnachting", value: company.OvernachtingPersonen || '0' },
+        { label: "Namen overnachting", value: renderList(company.NamenOvernachting) },
+        { label: "Namen catering", value: renderList(company.NamenCatering) },
+        { label: "Dieetwensen", value: company.DieetWensen || <span className="text-gray-500">Geen</span> },
+    ];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-2xl font-bold mb-6">Hospitality & Makersdagen: {company.Name}</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
+                </div>
+                <dl className="space-y-4">
+                    {details.map(({ label, value }) => (
+                        <div key={label} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <dt className="font-semibold text-gray-600">{label}</dt>
+                            <dd className="md:col-span-2 text-gray-800">{value}</dd>
+                        </div>
+                    ))}
+                </dl>
+            </div>
+        </div>
+    );
+}
+
+function TechniqueModal({ company, onClose }) {
+    if (!company) return null;
+
+    const wishes = company.Techniek || [];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-2xl font-bold mb-6">Techniekwensen: {company.Name}</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">{icons.x}</button>
+                </div>
+                {wishes.length > 0 ? (
+                    <div className="flex flex-wrap gap-3">
+                        {wishes.map((wish, index) => (
+                            <span key={index} className="bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full">
+                                {wish}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-gray-500">Geen specifieke techniekwensen opgegeven.</p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+
+function CompaniesView({ companies, artists, performances, executions, events, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [editingCompany, setEditingCompany] = useState(null);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [hospitalityModalCompany, setHospitalityModalCompany] = useState(null);
+    const [techniqueModalCompany, setTechniqueModalCompany] = useState(null);
+    const [viewMode, setViewMode] = useState('list');
+    const [detailCompany, setDetailCompany] = useState(null);
+
+    const companiesWithDetails = useMemo(() => {
+        return companies.map(comp => {
+            const contactPerson = artists.find(a => a.id === comp.contactPersonId);
+            const players = (comp.playerIds || []).map(id => artists.find(a => a.id === id)).filter(Boolean);
+            
+            const companyPerformances = performances.filter(p => p.companyId === comp.id);
+            const companyPerformanceIds = new Set(companyPerformances.map(p => p.id));
+            
+            const companyExecutions = executions.filter(exec => companyPerformanceIds.has(exec.performanceId));
+            const companyExecutionIds = new Set(companyExecutions.map(exec => exec.id));
+
+            const companyEvents = events.filter(event => (event.executionIds || []).some(execId => companyExecutionIds.has(execId)));
+            const eventNames = companyEvents.map(e => e.Name).join(', ');
+
+            return { 
+              ...comp, 
+              contactPerson, 
+              players, 
+              contactPersonName: contactPerson?.Name || '',
+              edities: eventNames || 'N.v.t.'
+            };
+        });
+    }, [companies, artists, performances, executions, events]);
+
+    const { 
+        filteredAndSortedItems, 
+        searchTerm, 
+        setSearchTerm, 
+        sortConfig, 
+        requestSort,
+        filters,
+        handleFilterChange
+    } = useSortAndFilter(
+        companiesWithDetails,
+        'Name',
+        ['Name', 'contactPersonName', 'Description', 'edities']
+    );
+
+    const columns = [
+        { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+        { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
+        { key: 'players', header: 'Spelers', sortable: false, filterable: false },
+        { key: 'edities', header: 'Edities', sortable: true, filterable: true },
+        { key: 'Description', header: 'Beschrijving', sortable: false, filterable: false },
+    ];
+
+    const handleEdit = (company) => {
+        setDetailCompany(null);
+        setEditingCompany(company);
+        setIsModalOpen(true);
+    };
+
+    const handleAddNew = () => {
+        setEditingCompany(null);
+        setIsModalOpen(true);
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(filteredAndSortedItems.map(c => c.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+    
+    const handleSelectOne = (e, id) => {
+        const newSelectedIds = new Set(selectedIds);
+        if (e.target.checked) newSelectedIds.add(id);
+        else newSelectedIds.delete(id);
+        setSelectedIds(newSelectedIds);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.size > 0) {
+          onBulkDelete(Array.from(selectedIds));
+          setSelectedIds(new Set());
+        }
+    };
+    
+    const handleImport = (data) => {
+        const formattedData = data.map(item => ({
+            ...item,
+            playerIds: item.playerIds ? item.playerIds.split(';').map(id => id.trim()) : [],
+        }));
+        onBulkAdd(formattedData);
+    };
+
+    const countText = `Toont ${filteredAndSortedItems.length} van ${companies.length} gezelschappen.`;
+    const isAllSelected = filteredAndSortedItems.length > 0 && selectedIds.size === filteredAndSortedItems.length;
+
+    return (
+        <div>
+            <ViewHeader
+                title="Gezelschappen"
+                countText={countText}
+                onAddNew={handleAddNew}
+                onImport={() => setIsImportModalOpen(true)}
+                onExport={exportTo}
+                exportData={filteredAndSortedItems}
+                exportColumns={columns}
+                exportFilename="gezelschappen"
+                onSearch={setSearchTerm}
+                searchTerm={searchTerm}
+                hasEditPermissions={hasEditPermissions}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+            />
+            {selectedIds.size > 0 && hasEditPermissions && (
+                <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+                    <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+                    <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                        {icons.trash} <span>Verwijderen</span>
+                    </button>
+                </div>
+            )}
+            
+            {viewMode === 'list' && (
+                <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3">
+                                    <input type="checkbox" 
+                                        onChange={handleSelectAll} 
+                                        checked={isAllSelected}
+                                        disabled={filteredAndSortedItems.length === 0}
+                                    />
+                                </th>
+                                {columns.map(col => 
+                                    <SortableTh 
+                                        key={col.key} 
+                                        column={col} 
+                                        sortConfig={sortConfig} 
+                                        requestSort={requestSort}
+                                        filters={filters}
+                                        handleFilterChange={handleFilterChange}
+                                        allItems={companiesWithDetails}
+                                    />
+                                )}
+                                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredAndSortedItems.map(company => (
+                                <tr key={company.id} className={selectedIds.has(company.id) ? 'bg-indigo-50' : ''}>
+                                    <td className="px-6 py-4">
+                                        <input type="checkbox" 
+                                            checked={selectedIds.has(company.id)} 
+                                            onChange={(e) => handleSelectOne(e, company.id)} 
+                                        />
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{company.Name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                                        {company.contactPerson ? (
+                                            <button onClick={() => onQuickView({ item: company.contactPerson, type: 'contact' })} className="text-indigo-600 hover:underline">{company.contactPerson.Name}</button>
+                                        ) : 'N.v.t.'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{company.players.length}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{company.edities}</td>
+                                    <td className="px-6 py-4 text-gray-500 truncate max-w-xs">{company.Description}</td>
+                                    {hasEditPermissions && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                            <button onClick={() => setHospitalityModalCompany(company)} title="Hospitality" className="text-green-600 hover:text-green-900 p-1">{icons.users}</button>
+                                            <button onClick={() => setTechniqueModalCompany(company)} title="Techniek" className="text-blue-600 hover:text-blue-900 p-1">{icons.settings}</button>
+                                            <button onClick={() => handleEdit(company)} title="Bewerken" className="text-indigo-600 hover:text-indigo-900 p-1">{icons.edit}</button>
+                                            <button onClick={() => onDelete(company.id)} title="Verwijderen" className="text-red-600 hover:text-red-900 p-1">{icons.trash}</button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {viewMode === 'card' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredAndSortedItems.map(company => (
+                        <div key={company.id} onClick={() => setDetailCompany(company)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-800 truncate">{company.Name}</h3>
+                                <p className="text-gray-500 text-sm truncate mt-1">{company.Description}</p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                <p className="text-xs text-gray-500">Contact: {company.contactPersonName || 'N.v.t.'}</p>
+                                <p className="text-xs text-gray-500">{company.players.length} spelers</p>
+                                <p className="text-xs text-gray-500 truncate">Edities: {company.edities}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {isModalOpen && (
+                <CompanyForm
+                    company={editingCompany}
+                    artists={artists}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={(data) => {
+                        if (editingCompany) onUpdate(editingCompany.id, data);
+                        else onAdd(data);
+                        setIsModalOpen(false);
+                    }}
+                />
+            )}
+            {detailCompany && (
+                <CompanyDetailModal 
+                    company={detailCompany}
+                    artists={artists}
+                    onClose={() => setDetailCompany(null)}
+                    onEdit={hasEditPermissions ? handleEdit : null}
+                    onDelete={hasEditPermissions ? () => onDelete(detailCompany.id) : null}
+                />
+            )}
+            {isImportModalOpen && (
+                <GenericImportModal 
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImport={handleImport}
+                    requiredColumns={['Name']}
+                    title="Gezelschappen"
+                />
+            )}
+            {hospitalityModalCompany && <HospitalityModal company={hospitalityModalCompany} onClose={() => setHospitalityModalCompany(null)} />}
+            {techniqueModalCompany && <TechniqueModal company={techniqueModalCompany} onClose={() => setTechniqueModalCompany(null)} />}
+        </div>
+    );
+}
+
+function CompanyDetailModal({ company, artists, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value, children }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            {children ? <div className="text-gray-800 mt-1">{children}</div> : <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>}
+        </div>
+    );
+
+    const contactPerson = artists.find(a => a.id === company.contactPersonId);
+    const players = (company.playerIds || []).map(id => artists.find(a => a.id === id)).filter(Boolean);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{company.Name}</h2>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <DetailItem label="Beschrijving" value={company.Description} />
+                    <DetailItem label="Contactpersoon" value={contactPerson?.Name} />
+                    <DetailItem label="Edities" value={company.edities} />
+                    <DetailItem label="Spelers">
+                        {players.length > 0 ? (
+                            <ul className="list-disc list-inside">
+                                {players.map(p => <li key={p.id}>{p.Name}</li>)}
+                            </ul>
+                        ) : <p className="text-gray-400">Geen spelers gekoppeld.</p>}
+                    </DetailItem>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center">
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(company.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(company)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+function CompanyForm({ company, artists, onClose, onSave }) {
+    const [formData, setFormData] = useState({
+        Name: company?.Name || '',
+        Description: company?.Description || '',
+        contactPersonId: company?.contactPersonId || '',
+        playerIds: company?.playerIds || [],
+    });
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePlayerChange = (playerId) => {
+        setFormData(prev => {
+            const newPlayerIds = prev.playerIds.includes(playerId)
+                ? prev.playerIds.filter(id => id !== playerId)
+                : [...prev.playerIds, playerId];
+            return { ...prev, playerIds: newPlayerIds };
+        });
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    const sortedArtists = useMemo(() => [...artists].sort((a,b) => a.Name.localeCompare(b.Name)), [artists]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl max-h-full overflow-y-auto">
+                <h3 className="text-2xl font-bold mb-6">{company ? 'Gezelschap Bewerken' : 'Nieuw Gezelschap'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van het gezelschap" className="w-full p-2 border rounded" required />
+                    <textarea name="Description" value={formData.Description} onChange={handleChange} placeholder="Korte beschrijving" className="w-full p-2 border rounded h-24"></textarea>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon</label>
+                        <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
+                            <option value="">Selecteer een contactpersoon</option>
+                            {sortedArtists.map(artist => <option key={artist.id} value={artist.id}>{artist.Name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Selecteer Spelers</label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 border rounded-lg p-4 max-h-60 overflow-y-auto">
+                            {sortedArtists.map(artist => (
+                                <label key={artist.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
+                                    <input type="checkbox" checked={formData.playerIds.includes(artist.id)} onChange={() => handlePlayerChange(artist.id)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                    <span>{artist.Name}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function PerformancesView({ performances, companies, executions, events, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [editingPerformance, setEditingPerformance] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list');
+  const [detailPerformance, setDetailPerformance] = useState(null);
+  
+  const enrichedPerformances = useMemo(() => performances.map(p => {
+      const performanceExecutions = executions.filter(exec => exec.performanceId === p.id);
+      const executionIds = new Set(performanceExecutions.map(exec => exec.id));
+      const performanceEvents = events.filter(event => (event.executionIds || []).some(execId => executionIds.has(execId)));
+      const eventNames = performanceEvents.map(e => e.Name).join(', ');
+
+      return {
+          ...p,
+          companyName: (companies.find(c => c.id === p.companyId) || {}).Name || '',
+          company: companies.find(c => c.id === p.companyId) || null,
+          edities: eventNames || 'N.v.t.'
+      };
+  }), [performances, companies, executions, events]);
+  
+  const { 
+    filteredAndSortedItems: filteredPerformances, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(enrichedPerformances, 'Title', ['Title', 'companyName', 'genre', 'edities']);
+
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Title', header: 'Titel', sortable: true, filterable: true },
+    { key: 'companyName', header: 'Gezelschap', sortable: true, filterable: true },
+    { key: 'edities', header: 'Edities', sortable: true, filterable: true },
+    { key: 'genre', header: 'Genre', sortable: true, filterable: true },
+    { key: 'isDutchLanguage', header: 'NL', sortable: true, filterable: true },
+    { key: 'isEnglishLanguage', header: 'EN', sortable: true, filterable: true },
+    { key: 'isDialogueFree', header: 'Taalloos', sortable: true, filterable: true },
+    { key: 'isChildFriendly', header: 'Kindvriendelijk', sortable: true, filterable: true },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['Title', 'companyName', 'edities', 'genre']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig, filters, viewMode]);
+
+  const handleEdit = (performance) => {
+    setDetailPerformance(null);
+    setEditingPerformance(performance);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingPerformance(null);
+    setIsModalOpen(true);
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedIds(new Set(filteredPerformances.map(p => p.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const handleSelectOne = (e, id) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (e.target.checked) newSelectedIds.add(id);
+    else newSelectedIds.delete(id);
+    setSelectedIds(newSelectedIds);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+  
+  const isAllSelected = filteredPerformances.length > 0 && selectedIds.size === filteredPerformances.length;
+  const countText = `Toont ${filteredPerformances.length} van ${performances.length} voorstellingen`;
+  
+  return (
+    <div>
+      <ViewHeader
+        title="Voorstellingen"
+        countText={countText}
+        onAddNew={handleAddNew}
+        onImport={() => setIsImportModalOpen(true)}
+        onExport={exportTo}
+        exportData={filteredPerformances}
+        exportColumns={ALL_COLUMNS.filter(c => visibleColumns.has(c.key))}
+        exportFilename="voorstellingen"
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      >
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
+      
+      {selectedIds.size > 0 && hasEditPermissions && (
+        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                {icons.trash} <span>Verwijderen</span>
+            </button>
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+          <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      disabled={filteredPerformances.length === 0}
+                    />
+                  </th>
+                  {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                    <SortableTh 
+                        key={col.key} 
+                        column={col} 
+                        sortConfig={sortConfig} 
+                        requestSort={requestSort}
+                        filters={filters}
+                        handleFilterChange={handleFilterChange}
+                        allItems={enrichedPerformances}
+                    />
+                  )}
+                  {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPerformances.length > 0 ? filteredPerformances.map(p => (
+                      <tr key={p.id} className={selectedIds.has(p.id) ? 'bg-indigo-50' : ''}>
+                        <td className="px-4 py-4">
+                           <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                            checked={selectedIds.has(p.id)}
+                            onChange={(e) => handleSelectOne(e, p.id)}
+                          />
+                        </td>
+                        {visibleColumns.has('Title') && <td className="px-6 py-4 whitespace-nowrap font-medium">{p.Title}</td>}
+                        {visibleColumns.has('companyName') && <td className="px-6 py-4 whitespace-nowrap">
+                            {p.company ? (
+                                <button onClick={() => onQuickView({ item: p.company, type: 'company' })} className="text-indigo-600 hover:underline">
+                                    {p.company.Name}
+                                </button>
+                            ) : 'N.v.t.'}
+                        </td>}
+                        {visibleColumns.has('edities') && <td className="px-6 py-4 whitespace-nowrap">{p.edities}</td>}
+                        {visibleColumns.has('genre') && <td className="px-6 py-4 whitespace-nowrap">{p.genre}</td>}
+                        {visibleColumns.has('isDutchLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isDutchLanguage ? 'Ja' : 'Nee'}</td>}
+                        {visibleColumns.has('isEnglishLanguage') && <td className="px-6 py-4 whitespace-nowrap">{p.isEnglishLanguage ? 'Ja' : 'Nee'}</td>}
+                        {visibleColumns.has('isDialogueFree') && <td className="px-6 py-4 whitespace-nowrap">{p.isDialogueFree ? 'Ja' : 'Nee'}</td>}
+                        {visibleColumns.has('isChildFriendly') && <td className="px-6 py-4 whitespace-nowrap">{p.isChildFriendly ? 'Ja' : 'Nee'}</td>}
+                        {hasEditPermissions && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button onClick={() => handleEdit(p)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                              <button onClick={() => onDelete(p.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                            </td>
+                        )}
+                      </tr>
+                    )) : (
+                  <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen voorstellingen gevonden.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+      )}
+
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredPerformances.map(p => (
+                <div key={p.id} onClick={() => setDetailPerformance(p)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{p.Title}</h3>
+                        <p className="text-indigo-600 text-sm">{p.companyName}</p>
+                        <p className="text-gray-500 text-sm truncate mt-1">{p.genre}</p>
+                        <p className="text-gray-500 text-xs truncate mt-1">Edities: {p.edities}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                        {p.isDutchLanguage && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">NL</span>}
+                        {p.isEnglishLanguage && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">EN</span>}
+                        {p.isDialogueFree && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Taalloos</span>}
+                        {p.isChildFriendly && <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Kindvriendelijk</span>}
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <PerformanceForm 
+          performance={editingPerformance} 
+          companies={companies}
+          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            if (editingPerformance) {
+              onUpdate(editingPerformance.id, data);
+            } else {
+              onAdd(data);
+            }
+            setIsModalOpen(false);
+          }}
+        />
+      )}
+      {detailPerformance && (
+        <PerformanceDetailModal 
+            performance={detailPerformance}
+            onClose={() => setDetailPerformance(null)}
+            onEdit={hasEditPermissions ? handleEdit : null}
+            onDelete={hasEditPermissions ? () => onDelete(detailPerformance.id) : null}
+        />
+      )}
+      {isImportModalOpen && (
+        <GenericImportModal
+            title="Voorstellingen"
+            requiredColumns={['Title', 'companyId']}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={(data) => onBulkAdd(data.map(item => ({
+                Title: item.Title || '',
+                companyId: item.companyId || null,
+                genre: item.genre || '',
+                meerInfoUrl: item.meerInfoUrl || '',
+                imageUrl: item.imageUrl || '',
+                pwycLink: item.pwycLink || '',
+                isDutchLanguage: item.isDutchLanguage === 'true',
+                isEnglishLanguage: item.isEnglishLanguage === 'true',
+                isDialogueFree: item.isDialogueFree === 'true',
+                isChildFriendly: item.isChildFriendly === 'true',
+            })))}
+        />
+      )}
+    </div>
+  );
+}
+
+function PerformanceDetailModal({ performance, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>
+        </div>
+    );
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{performance.Title}</h2>
+                        <p className="text-gray-500 mt-1">{performance.companyName}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem label="Genre" value={performance.genre} />
+                        <DetailItem label="Edities" value={performance.edities} />
+                        <DetailItem label="Meer Info URL" value={performance.meerInfoUrl} />
+                        <DetailItem label="Afbeelding URL" value={performance.imageUrl} />
+                        <DetailItem label="PWYC Link" value={performance.pwycLink} />
+                    </div>
+                    <DetailItem label="Kenmerken">
+                       <div className="flex flex-wrap gap-2 text-sm">
+                           {performance.isDutchLanguage && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Nederlandstalig</span>}
+                           {performance.isEnglishLanguage && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">Engelstalig</span>}
+                           {performance.isDialogueFree && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Taalloos</span>}
+                           {performance.isChildFriendly && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Kindvriendelijk</span>}
+                       </div>
+                    </DetailItem>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center">
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(performance.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(performance)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+function PerformanceForm({ performance, companies, onClose, onSave }) {
+  const [formData, setFormData] = useState({ 
+      title: performance?.Title || '', 
+      companyId: performance?.companyId || '',
+      genre: performance?.genre || '',
+      meerInfoUrl: performance?.meerInfoUrl || '',
+      imageUrl: performance?.imageUrl || '',
+      pwycLink: performance?.pwycLink || '',
+      isDutchLanguage: performance?.isDutchLanguage || false,
+      isEnglishLanguage: performance?.isEnglishLanguage || false,
+      isDialogueFree: performance?.isDialogueFree || false,
+      isChildFriendly: performance?.isChildFriendly || false,
+  });
+  
+  const sortedCompanies = useMemo(() => [...companies].sort((a,b) => a.Name.localeCompare(b.Name)), [companies]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleSubmit = (e) => { 
+      e.preventDefault(); 
+      onSave({ 
+          Title: formData.title, 
+          companyId: formData.companyId,
+          genre: formData.genre,
+          meerInfoUrl: formData.meerInfoUrl,
+          imageUrl: formData.imageUrl,
+          pwycLink: formData.pwycLink,
+          isDutchLanguage: formData.isDutchLanguage,
+          isEnglishLanguage: formData.isEnglishLanguage,
+          isDialogueFree: formData.isDialogueFree,
+          isChildFriendly: formData.isChildFriendly,
+      }); 
+  };
+  return (
+     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
+        <h3 className="text-2xl font-bold mb-6">{performance ? 'Voorstelling Bewerken' : 'Nieuwe Voorstelling'}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Titel van de voorstelling" className="w-full p-2 border rounded" required />
+          <select name="companyId" value={formData.companyId} onChange={handleChange} className="w-full p-2 border rounded" required>
+            <option value="">Kies een gezelschap</option>
+            {sortedCompanies.map(c => <option key={c.id} value={c.id}>{c.Name}</option>)}
+          </select>
+          <input type="text" name="genre" value={formData.genre} onChange={handleChange} placeholder="Genre" className="w-full p-2 border rounded" />
+          <input type="url" name="meerInfoUrl" value={formData.meerInfoUrl} onChange={handleChange} placeholder="Meer Info URL" className="w-full p-2 border rounded" />
+          <input type="url" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
+          <input type="url" name="pwycLink" value={formData.pwycLink} onChange={handleChange} placeholder="PWYC Link" className="w-full p-2 border rounded" />
+          
+          <div className="grid grid-cols-2 gap-4">
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isDutchLanguage" checked={formData.isDutchLanguage} onChange={handleChange} /><span>Nederlandstalig</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isEnglishLanguage" checked={formData.isEnglishLanguage} onChange={handleChange} /><span>Engelstalig</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isDialogueFree" checked={formData.isDialogueFree} onChange={handleChange} /><span>Taalloos</span></label>
+              <label className="flex items-center space-x-2"><input type="checkbox" name="isChildFriendly" checked={formData.isChildFriendly} onChange={handleChange} /><span>Kindvriendelijk</span></label>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function LocationsView({ locations, cafeOwners, performances, onAdd, onUpdate, onDelete, onBulkAdd, onBulkDelete, hasEditPermissions, onQuickView }) {
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list');
+  const [detailLocation, setDetailLocation] = useState(null);
+
+  const enrichedLocations = useMemo(() => locations.map(loc => {
+      const contactPerson = cafeOwners.find(c => c.id === loc.contactPersonId);
+      return {
+        ...loc,
+        ownerNames: (loc.ownerIds || []).map(id => cafeOwners.find(c => c.id === id)?.Name).filter(Boolean).join(', '),
+        contactPerson: contactPerson || null,
+        contactPersonName: contactPerson?.Name || ''
+      }
+  }), [locations, cafeOwners]);
+  
+  const { 
+    filteredAndSortedItems: filteredLocations, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(
+      enrichedLocations,
+      'Name',
+      ['Name', 'Address', 'locationNumber', 'ownerNames', 'contactPersonName']
+  );
+  
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'Address', header: 'Adres', sortable: true, filterable: true },
+    { key: 'contactPersonName', header: 'Contactpersoon', sortable: true, filterable: true },
+    { key: 'Bijdrage', header: 'Cafébijdrage (€)', sortable: true, filterable: false },
+    { key: 'terras', header: 'Terras', sortable: true, filterable: true },
+    { key: 'kleedruimte', header: 'Kleedruimte', sortable: true, filterable: true },
+    { key: 'isWheelchairAccessible', header: 'Rolstoel', sortable: true, filterable: true },
+  ], []);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig, filters, viewMode]);
+  
+  const handleEdit = (location) => {
+    setDetailLocation(null);
+    setEditingLocation(location);
+    setIsFormModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingLocation(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedIds(new Set(filteredLocations.map(l => l.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const handleSelectOne = (e, id) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (e.target.checked) newSelectedIds.add(id);
+    else newSelectedIds.delete(id);
+    setSelectedIds(newSelectedIds);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+
+  const isAllSelected = filteredLocations.length > 0 && selectedIds.size === filteredLocations.length;
+  const countText = `Toont ${filteredLocations.length} van ${locations.length} locaties`;
+
+  return (
+    <div>
+      <ViewHeader
+        title="Locaties"
+        countText={countText}
+        onAddNew={handleAddNew}
+        onImport={() => setIsImportModalOpen(true)}
+        onExport={exportTo}
+        exportData={filteredLocations}
+        exportColumns={ALL_COLUMNS}
+        exportFilename="locaties"
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      />
+      
+      {selectedIds.size > 0 && hasEditPermissions && (
+        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                {icons.trash} <span>Verwijderen</span>
+            </button>
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3">
+                  <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    disabled={filteredLocations.length === 0}
+                  />
+                </th>
+                {ALL_COLUMNS.map(col => 
+                  <SortableTh 
+                      key={col.key} 
+                      column={col} 
+                      sortConfig={sortConfig} 
+                      requestSort={requestSort}
+                      filters={filters}
+                      handleFilterChange={handleFilterChange}
+                      allItems={enrichedLocations}
+                  />
+                )}
+                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredLocations.map(loc => (
+                <tr key={loc.id} className={selectedIds.has(loc.id) ? 'bg-indigo-50' : ''}>
+                  <td className="px-4 py-4">
+                    <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      checked={selectedIds.has(loc.id)}
+                      onChange={(e) => handleSelectOne(e, loc.id)}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium">{loc.Name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{loc.Address}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{loc.contactPersonName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">€{loc.Bijdrage || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{loc.terras ? 'Ja' : 'Nee'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{loc.kleedruimte ? 'Ja' : 'Nee'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{loc.isWheelchairAccessible ? 'Ja' : 'Nee'}</td>
+                  {hasEditPermissions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button onClick={() => setDetailLocation(loc)} className="text-gray-600 hover:text-indigo-900 mr-4">Details</button>
+                      <button onClick={() => handleEdit(loc)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                      <button onClick={() => onDelete(loc.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredLocations.map(loc => (
+                <div key={loc.id} onClick={() => setDetailLocation(loc)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{loc.Name}</h3>
+                        <p className="text-gray-500 text-sm truncate mt-1">{loc.Address}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-xs text-gray-500">Contact: {loc.contactPersonName || 'N.v.t.'}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
+
+      {detailLocation && (
+        <LocationDetailModal
+          location={detailLocation}
+          performances={performances}
+          onClose={() => setDetailLocation(null)}
+          onEdit={hasEditPermissions ? handleEdit : null}
+          onDelete={hasEditPermissions ? () => onDelete(detailLocation.id) : null}
+        />
+      )}
+
+      {isFormModalOpen && (
+        <LocationForm 
+          key={editingLocation ? editingLocation.id : 'new-location'}
+          location={editingLocation}
+          performances={performances}
+          cafeOwners={cafeOwners}
+          onClose={() => setIsFormModalOpen(false)}
+          onSave={(data) => {
+            if (editingLocation) {
+              onUpdate(editingLocation.id, data);
+            } else {
+              onAdd(data);
+            }
+            setIsFormModalOpen(false);
+          }}
+        />
+      )}
+      {isImportModalOpen && (
+        <GenericImportModal
+            title="Locaties"
+            requiredColumns={['Name', 'Address']}
+            complexFields={{
+                'openingstijden': '[{"day":"Maandag","open":"10:00","close":"22:00","isClosed":false}]',
+                'geprogrammeerde_voorstellingen': '[{"year":2024,"performanceId":"..."}]'
+            }}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={(data) => onBulkAdd(data.map(item => ({
+                ...item,
+                ownerIds: item.ownerIds ? item.ownerIds.split(';').map(s => s.trim()) : [],
+                contactPersonId: item.contactPersonId || null,
+                hasDining: item.hasDining === 'true',
+                isWheelchairAccessible: item.isWheelchairAccessible === 'true',
+                terras: item.terras === 'true',
+                kleedruimte: item.kleedruimte === 'true',
+                kan_groep_mee_eten: item.kan_groep_mee_eten === 'true',
+                mag_contact_opnemen_advertentie: item.mag_contact_opnemen_advertentie === 'true',
+                capaciteit: item.capaciteit ? parseInt(item.capaciteit, 10) : 0,
+                maximale_gezelschapsgrootte: item.maximale_gezelschapsgrootte ? parseInt(item.maximale_gezelschapsgrootte, 10) : 0,
+                Bijdrage: item.Bijdrage ? parseInt(item.Bijdrage, 10) : 0,
+            })))}
+        />
+      )}
+    </div>
+  );
+}
+
+function LocationDetailModal({ location, performances, onClose, onEdit, onDelete }) {
+    const openingstijden = useMemo(() => {
+        try {
+            return JSON.parse(location.openingstijden || '[]');
+        } catch {
+            return [];
+        }
+    }, [location.openingstijden]);
+
+    const geprogrammeerdeVoorstellingen = useMemo(() => {
+        try {
+            const items = JSON.parse(location.geprogrammeerde_voorstellingen || '[]');
+            return items.map(item => ({
+                ...item,
+                performanceName: performances.find(p => p.id === item.performanceId)?.Title || 'Onbekende voorstelling'
+            }));
+        } catch {
+            return [];
+        }
+    }, [location.geprogrammeerde_voorstellingen, performances]);
+    
+    const DetailItem = ({ label, value, children }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            {children ? <div className="text-gray-800 mt-1">{children}</div> : <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>}
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{location.Name}</h2>
+                        <p className="text-gray-500 flex items-center mt-1">
+                            <span className="w-4 h-4 mr-2">{icons.mapPin}</span>
+                            {location.Address}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem label="Algemeen Contact">
+                            <div className="flex items-center space-x-4">
+                                <span className="flex items-center"><span className="mr-2">{icons.phone}</span> {location.telefoonnummer_algemeen || 'N.v.t.'}</span>
+                                <span className="flex items-center"><span className="mr-2">{icons.mail}</span> {location.mailadres_algemeen || 'N.v.t.'}</span>
+                            </div>
+                        </DetailItem>
+                        
+                        <DetailItem label="Contactpersoon">
+                            {location.contactPerson ? (
+                                <div className="space-y-1">
+                                    <p className="font-semibold">{location.contactPerson.Name}</p>
+                                    <p className="flex items-center text-sm"><span className="w-4 h-4 mr-2">{icons.mail}</span> {location.contactPerson.Email || 'N.v.t.'}</p>
+                                    <p className="flex items-center text-sm"><span className="w-4 h-4 mr-2">{icons.phone}</span> {location.contactPerson.Phone || 'N.v.t.'}</p>
+                                </div>
+                            ) : (
+                                <p className="text-gray-400">Geen contactpersoon geselecteerd.</p>
+                            )}
+                        </DetailItem>
+
+                        <DetailItem label="Capaciteit" value={location.capaciteit} />
+                        <DetailItem label="Maximale Gezelschapsgrootte" value={location.maximale_gezelschapsgrootte} />
+                        <DetailItem label="Deelnamegeld" value={location.deelnamegeld} />
+                        <DetailItem label="Cafébijdrage" value={location.Bijdrage ? `€${location.Bijdrage}` : 'N.v.t.'} />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                       <DetailItem label="Faciliteiten">
+                           <div className="flex flex-wrap gap-2 text-sm">
+                               {location.terras && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">Terras</span>}
+                               {location.kleedruimte && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Kleedruimte</span>}
+                               {location.isWheelchairAccessible && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Rolstoeltoegankelijk</span>}
+                               {location.kan_groep_mee_eten && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Groep kan mee-eten</span>}
+                           </div>
+                       </DetailItem>
+                       <DetailItem label="Voorkeur Genre/Thema" value={location.voorkeur_genre_thema} />
+                       <DetailItem label="Techniek" value={location.techniek} />
+                       <DetailItem label="Opmerkingen" value={location.opmerkingen} />
+                    </div>
+
+                    <DetailItem label="Openingstijden">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
+                            {openingstijden.length > 0 ? openingstijden.map(t => (
+                                <div key={t.day} className="flex justify-between p-2 bg-gray-50 rounded-md">
+                                    <span className="font-medium">{t.day}</span>
+                                    <span className={t.isClosed ? 'text-red-500' : 'text-gray-700'}>
+                                        {t.isClosed ? 'Gesloten' : `${t.open} - ${t.close}`}
+                                    </span>
+                                </div>
+                            )) : <p className="text-gray-400 col-span-full">Geen tijden opgegeven.</p>}
+                        </div>
+                    </DetailItem>
+
+                    <DetailItem label="Geprogrammeerde Voorstellingen">
+                        <ul className="space-y-1 list-disc list-inside">
+                            {geprogrammeerdeVoorstellingen.length > 0 ? geprogrammeerdeVoorstellingen.map((item, index) => (
+                                <li key={index}><strong>{item.year}:</strong> {item.performanceName}</li>
+                            )) : <p className="text-gray-400">Geen voorstellingen geprogrammeerd.</p>}
+                        </ul>
+                    </DetailItem>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-between items-center">
+                    <p className="text-xs text-gray-500">
+                        Advertenties toegestaan: {location.mag_contact_opnemen_advertentie ? 'Ja' : 'Nee'}
+                    </p>
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(location.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(location)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+function LocationForm({ location, performances, cafeOwners, onClose, onSave }) {
+    const initialOpeningstijden = useMemo(() => {
+        const days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+        try {
+            const storedTimes = JSON.parse(location?.openingstijden || '[]');
+            if (Array.isArray(storedTimes) && storedTimes.length === 7) {
+                return storedTimes;
+            }
+        } catch {}
+        return days.map(day => ({ day, open: '', close: '', isClosed: false }));
+    }, [location]);
+
+    const initialProgrammed = useMemo(() => {
+        try {
+            const items = JSON.parse(location?.geprogrammeerde_voorstellingen || '[]');
+            return Array.isArray(items) ? items : [];
+        } catch {
+            return [];
+        }
+    }, [location]);
+
+    const [formData, setFormData] = useState({
+        Name: location?.Name || '',
+        Address: location?.Address || '',
+        googleMapsUrl: location?.googleMapsUrl || '',
+        locationNumber: location?.locationNumber || '',
+        telefoonnummer_algemeen: location?.telefoonnummer_algemeen || '',
+        mailadres_algemeen: location?.mailadres_algemeen || '',
+        terras: location?.terras || false,
+        kleedruimte: location?.kleedruimte || false,
+        techniek: location?.techniek || '',
+        capaciteit: location?.capaciteit || 0,
+        voorkeur_genre_thema: location?.voorkeur_genre_thema || '',
+        maximale_gezelschapsgrootte: location?.maximale_gezelschapsgrootte || 0,
+        deelnamegeld: location?.deelnamegeld || '',
+        kan_groep_mee_eten: location?.kan_groep_mee_eten || false,
+        mag_contact_opnemen_advertentie: location?.mag_contact_opnemen_advertentie || false,
+        opmerkingen: location?.opmerkingen || '',
+        hasDining: location?.hasDining || false,
+        isWheelchairAccessible: location?.isWheelchairAccessible || false,
+        contactPersonId: location?.contactPersonId || '',
+        Bijdrage: location?.Bijdrage || 0,
+    });
+    const [openingstijden, setOpeningstijden] = useState(initialOpeningstijden);
+    const [programmed, setProgrammed] = useState(initialProgrammed);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+    
+    const handleOpeningstijdenChange = (index, field, value) => {
+        const newTimes = [...openingstijden];
+        newTimes[index][field] = typeof value === 'boolean' ? value : value;
+        setOpeningstijden(newTimes);
+    };
+
+    const handleProgrammedChange = (index, field, value) => {
+        const newProgrammed = [...programmed];
+        newProgrammed[index][field] = value;
+        setProgrammed(newProgrammed);
+    };
+
+    const addProgrammed = () => {
+        setProgrammed([...programmed, { year: new Date().getFullYear(), performanceId: '' }]);
+    };
+
+    const removeProgrammed = (index) => {
+        setProgrammed(programmed.filter((_, i) => i !== index));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const dataToSave = {
+            ...formData,
+            capaciteit: Number(formData.capaciteit) || 0,
+            maximale_gezelschapsgrootte: Number(formData.maximale_gezelschapsgrootte) || 0,
+            Bijdrage: Number(formData.Bijdrage) || 0,
+            openingstijden: JSON.stringify(openingstijden),
+            geprogrammeerde_voorstellingen: JSON.stringify(programmed),
+            ownerIds: location?.ownerIds || [],
+        };
+        onSave(dataToSave);
+    };
+    
+    const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
+    const sortedCafeOwners = useMemo(() => [...cafeOwners].sort((a,b) => a.Name.localeCompare(b.Name)), [cafeOwners]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b">
+                    <h3 className="text-2xl font-bold">{location ? 'Locatie Bewerken' : 'Nieuwe Locatie'}</h3>
+                </header>
+                <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" name="Name" value={formData.Name} onChange={handleChange} placeholder="Naam van de locatie" className="w-full p-2 border rounded" required />
+                        <input type="text" name="Address" value={formData.Address} onChange={handleChange} placeholder="Adres" className="w-full p-2 border rounded" />
+                        <input type="text" name="locationNumber" value={formData.locationNumber} onChange={handleChange} placeholder="Locatienummer" className="w-full p-2 border rounded" />
+                        <input type="url" name="googleMapsUrl" value={formData.googleMapsUrl} onChange={handleChange} placeholder="Google Maps URL" className="w-full p-2 border rounded" />
+                        <input type="tel" name="telefoonnummer_algemeen" value={formData.telefoonnummer_algemeen} onChange={handleChange} placeholder="Telefoonnummer" className="w-full p-2 border rounded" />
+                        <input type="email" name="mailadres_algemeen" value={formData.mailadres_algemeen} onChange={handleChange} placeholder="E-mailadres" className="w-full p-2 border rounded" />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon (Café-eigenaar)</label>
+                        <select name="contactPersonId" value={formData.contactPersonId} onChange={handleChange} className="w-full p-2 border rounded">
+                            <option value="">Kies een contactpersoon</option>
+                            {sortedCafeOwners.map(owner => (
+                                <option key={owner.id} value={owner.id}>{owner.Name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="number" name="capaciteit" value={formData.capaciteit} onChange={handleChange} placeholder="Capaciteit" className="w-full p-2 border rounded" />
+                        <input type="number" name="maximale_gezelschapsgrootte" value={formData.maximale_gezelschapsgrootte} onChange={handleChange} placeholder="Max. gezelschapsgrootte" className="w-full p-2 border rounded" />
+                        <input type="text" name="deelnamegeld" value={formData.deelnamegeld} onChange={handleChange} placeholder="Deelnamegeld" className="w-full p-2 border rounded" />
+                        <input type="number" name="Bijdrage" value={formData.Bijdrage} onChange={handleChange} placeholder="Cafébijdrage (€)" className="w-full p-2 border rounded" />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <textarea name="voorkeur_genre_thema" value={formData.voorkeur_genre_thema} onChange={handleChange} placeholder="Voorkeur genre/thema" className="w-full p-2 border rounded h-24"></textarea>
+                       <textarea name="techniek" value={formData.techniek} onChange={handleChange} placeholder="Notities over techniek" className="w-full p-2 border rounded h-24"></textarea>
+                       <textarea name="opmerkingen" value={formData.opmerkingen} onChange={handleChange} placeholder="Algemene opmerkingen" className="w-full p-2 border rounded h-24"></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="terras" checked={formData.terras} onChange={handleChange} /><span>Terras</span></label>
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="kleedruimte" checked={formData.kleedruimte} onChange={handleChange} /><span>Kleedruimte</span></label>
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="kan_groep_mee_eten" checked={formData.kan_groep_mee_eten} onChange={handleChange} /><span>Groep kan mee-eten</span></label>
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="mag_contact_opnemen_advertentie" checked={formData.mag_contact_opnemen_advertentie} onChange={handleChange} /><span>OK voor advertenties</span></label>
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="hasDining" checked={formData.hasDining} onChange={handleChange} /><span>Eetgelegenheid</span></label>
+                        <label className="flex items-center space-x-2"><input type="checkbox" name="isWheelchairAccessible" checked={formData.isWheelchairAccessible} onChange={handleChange} /><span>Rolstoeltoegankelijk</span></label>
+                    </div>
+
+                    <div>
+                        <h4 className="font-semibold mb-2">Openingstijden</h4>
+                        <div className="space-y-2">
+                            {openingstijden.map((day, index) => (
+                                <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                                    <span className="font-medium">{day.day}</span>
+                                    <input type="time" value={day.open} onChange={(e) => handleOpeningstijdenChange(index, 'open', e.target.value)} disabled={day.isClosed} className="w-full p-1 border rounded disabled:bg-gray-200" />
+                                    <input type="time" value={day.close} onChange={(e) => handleOpeningstijdenChange(index, 'close', e.target.value)} disabled={day.isClosed} className="w-full p-1 border rounded disabled:bg-gray-200" />
+                                    <label className="flex items-center space-x-2"><input type="checkbox" checked={day.isClosed} onChange={(e) => handleOpeningstijdenChange(index, 'isClosed', e.target.checked)} /><span>Gesloten</span></label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-semibold mb-2">Geprogrammeerde Voorstellingen</h4>
+                        <div className="space-y-2">
+                            {programmed.map((item, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                    <input type="number" value={item.year} onChange={e => handleProgrammedChange(index, 'year', e.target.value)} placeholder="Jaar" className="p-2 border rounded w-24" />
+                                    <select value={item.performanceId} onChange={e => handleProgrammedChange(index, 'performanceId', e.target.value)} className="w-full p-2 border rounded">
+                                        <option value="">Kies een voorstelling</option>
+                                        {sortedPerformances.map(p => <option key={p.id} value={p.id}>{p.Title}</option>)}
+                                    </select>
+                                    <button type="button" onClick={() => removeProgrammed(index)} className="text-red-500 p-2">{icons.trash}</button>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={addProgrammed} className="mt-2 text-sm text-indigo-600 hover:underline">{icons.plus} Voorstelling toevoegen</button>
+                    </div>
+                    
+                    <div className="flex justify-end space-x-4 pt-4 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function ExecutionsView({ executions, performances, locations, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete, hasEditPermissions, onQuickView }) {
+  const [showPast, setShowPast] = useState(false); 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [editingExecution, setEditingExecution] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list');
+  const [detailExecution, setDetailExecution] = useState(null);
+  
+  const enrichedExecutionsBase = useMemo(() => {
+    const now = new Date();
+    return executions
+        .map(exec => ({
+            ...exec,
+            performance: performances.find(p => p.id === exec.performanceId),
+            location: locations.find(l => l.id === exec.locationId),
+        }))
+        .filter(exec => exec.performance && exec.location)
+        .map(exec => ({
+            ...exec,
+            performanceTitle: exec.performance.Title,
+            locationName: exec.location.Name,
+        }))
+        .filter(exec => showPast || new Date(exec.DateTime) >= now);
+  }, [executions, performances, locations, showPast]);
+  
+  const { 
+    filteredAndSortedItems: filteredExecutions, 
+    searchTerm, 
+    setSearchTerm, 
+    sortConfig, 
+    requestSort,
+    filters,
+    handleFilterChange
+  } = useSortAndFilter(
+      enrichedExecutionsBase,
+      'DateTime',
+      ['performanceTitle', 'locationName']
+  );
+
+  const ALL_COLUMNS = useMemo(() => [
+    { key: 'performanceTitle', header: 'Voorstelling', sortable: true, filterable: true },
+    { key: 'locationName', header: 'Locatie', sortable: true, filterable: true },
+    { key: 'DateTime', header: 'Datum & Tijd', sortable: true, filterable: false },
+    { key: 'BezoekersAantallen', header: 'Bezoekers', sortable: true, filterable: false },
+    { key: 'PWYC', header: 'PWYC (€)', sortable: true, filterable: false },
+    { key: 'expectedCrowd', header: 'Verwachte Drukte', sortable: true, filterable: true },
+    { key: 'quietRoute', header: 'Rustige Route', sortable: true, filterable: true },
+    { key: 'hasNgt', header: 'NGT', sortable: true, filterable: true },
+  ], []);
+
+  const [visibleColumns, setVisibleColumns] = useState(new Set(['performanceTitle', 'locationName', 'DateTime', 'BezoekersAantallen', 'PWYC']));
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) newSet.delete(key);
+        else newSet.add(key);
+        return newSet;
+    });
+  };
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, sortConfig, filters, showPast, viewMode]);
+
+  const handleEdit = (execution) => {
+    setDetailExecution(null);
+    setEditingExecution(execution);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingExecution(null);
+    setIsModalOpen(true);
+  };
+  
+  const formatDateTime = (isoString) => {
+    if (!isoString) return 'N.v.t.';
+    const date = new Date(isoString);
+    return date.toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' });
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) setSelectedIds(new Set(filteredExecutions.map(ex => ex.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const handleSelectOne = (e, id) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (e.target.checked) newSelectedIds.add(id);
+    else newSelectedIds.delete(id);
+    setSelectedIds(newSelectedIds);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+  
+  const isAllSelected = filteredExecutions.length > 0 && selectedIds.size === filteredExecutions.length;
+  const countText = `Toont ${filteredExecutions.length} van ${executions.length} uitvoeringen`;
+  
+  return (
+    <div>
+      <ViewHeader
+        title="Uitvoeringen"
+        countText={countText}
+        onAddNew={handleAddNew}
+        onImport={() => setIsImportModalOpen(true)}
+        onExport={exportTo}
+        exportData={filteredExecutions}
+        exportColumns={ALL_COLUMNS}
+        exportFilename="uitvoeringen"
+        onSearch={setSearchTerm}
+        searchTerm={searchTerm}
+        hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      >
+        <button 
+            onClick={() => setShowPast(!showPast)} 
+            className="p-2 border rounded-lg shadow-sm bg-white hover:bg-gray-100"
+          >
+            {showPast ? 'Verleden verbergen' : 'Verleden tonen'}
+        </button>
+        <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
+      </ViewHeader>
+
+      {selectedIds.size > 0 && hasEditPermissions && (
+        <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-4 flex items-center justify-between">
+            <span className="text-indigo-800 font-semibold">{selectedIds.size} geselecteerd</span>
+            <button onClick={handleBulkDelete} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center space-x-1">
+                {icons.trash} <span>Verwijderen</span>
+            </button>
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left">
+                  <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    disabled={filteredExecutions.length === 0}
+                  />
+                </th>
+                {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                  <SortableTh 
+                      key={col.key} 
+                      column={col} 
+                      sortConfig={sortConfig} 
+                      requestSort={requestSort}
+                      filters={filters}
+                      handleFilterChange={handleFilterChange}
+                      allItems={enrichedExecutionsBase}
+                  />
+                )}
+                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredExecutions.length > 0 ? filteredExecutions.map(exec => (
+                    <tr key={exec.id} className={selectedIds.has(exec.id) ? 'bg-indigo-50' : ''}>
+                      <td className="px-4 py-4">
+                         <input type="checkbox" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                          checked={selectedIds.has(exec.id)}
+                          onChange={(e) => handleSelectOne(e, exec.id)}
+                        />
+                      </td>
+                      {visibleColumns.has('performanceTitle') && <td className="px-6 py-4 whitespace-nowrap font-medium">
+                          <button onClick={() => onQuickView({ item: exec.performance, type: 'performance' })} className="text-indigo-600 hover:underline">
+                              {exec.performance.Title}
+                          </button>
+                      </td>}
+                      {visibleColumns.has('locationName') && <td className="px-6 py-4 whitespace-nowrap">
+                          <button onClick={() => onQuickView({ item: exec.location, type: 'location' })} className="text-indigo-600 hover:underline">
+                              {exec.location.Name}
+                          </button>
+                      </td>}
+                      {visibleColumns.has('DateTime') && <td className="px-6 py-4 whitespace-nowrap">{formatDateTime(exec.DateTime)}</td>}
+                      {visibleColumns.has('BezoekersAantallen') && <td className="px-6 py-4 whitespace-nowrap">{exec.BezoekersAantallen || 0}</td>}
+                      {visibleColumns.has('PWYC') && <td className="px-6 py-4 whitespace-nowrap">€{exec.PWYC || 0}</td>}
+                      {visibleColumns.has('expectedCrowd') && <td className="px-6 py-4 whitespace-nowrap">{exec.expectedCrowd}</td>}
+                      {visibleColumns.has('quietRoute') && <td className="px-6 py-4 whitespace-nowrap">{exec.quietRoute ? 'Ja' : 'Nee'}</td>}
+                      {visibleColumns.has('hasNgt') && <td className="px-6 py-4 whitespace-nowrap">{exec.hasNgt ? 'Ja' : 'Nee'}</td>}
+                      {hasEditPermissions && (
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onClick={() => handleEdit(exec)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                            <button onClick={() => onDelete(exec.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                          </td>
+                      )}
+                    </tr>
+                  )) : (
+                <tr><td colSpan={visibleColumns.size + 2 + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen uitvoeringen gevonden.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+      
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredExecutions.map(exec => (
+                <div key={exec.id} onClick={() => setDetailExecution(exec)} className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-800 truncate">{exec.performanceTitle}</h3>
+                        <p className="text-indigo-600 text-sm truncate">{exec.locationName}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-sm font-semibold text-gray-700">{formatDateTime(exec.DateTime)}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <ExecutionForm 
+          execution={editingExecution} 
+          performances={performances}
+          locations={locations}
+          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            if (editingExecution) {
+              onUpdate(editingExecution.id, data);
+            } else {
+              onAdd(data);
+            }
+            setIsModalOpen(false);
+          }}
+          onSaveBulk={(data) => {
+            onBulkAdd(data);
+            setIsModalOpen(false);
+          }}
+        />
+      )}
+      {detailExecution && (
+        <ExecutionDetailModal 
+            execution={detailExecution}
+            onClose={() => setDetailExecution(null)}
+            onEdit={hasEditPermissions ? handleEdit : null}
+            onDelete={hasEditPermissions ? () => onDelete(detailExecution.id) : null}
+        />
+      )}
+       {isImportModalOpen && (
+        <GenericImportModal
+            title="Uitvoeringen"
+            requiredColumns={['performanceId', 'locationId', 'DateTime']}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={(data) => onBulkAdd(data.map(item => ({
+                performanceId: item.performanceId || null,
+                locationId: item.locationId || null,
+                DateTime: item.DateTime ? new Date(item.DateTime).toISOString() : null,
+                expectedCrowd: item.expectedCrowd || '',
+                quietRoute: item.quietRoute === 'true',
+                hasNgt: item.hasNgt === 'true',
+                BezoekersAantallen: item.BezoekersAantallen ? parseInt(item.BezoekersAantallen, 10) : 0,
+                PWYC: item.PWYC ? parseInt(item.PWYC, 10) : 0,
+            })))}
+        />
+      )}
+    </div>
+  );
+}
+
+function ExecutionDetailModal({ execution, onClose, onEdit, onDelete }) {
+    const DetailItem = ({ label, value }) => (
+        <div>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</h4>
+            <p className="text-gray-800">{value || <span className="text-gray-400">N.v.t.</span>}</p>
+        </div>
+    );
+    
+    const formatDateTime = (isoString) => {
+        if (!isoString) return 'N.v.t.';
+        const date = new Date(isoString);
+        return date.toLocaleString('nl-NL', { dateStyle: 'full', timeStyle: 'short' });
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                <header className="p-6 border-b flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-800">{execution.performanceTitle}</h2>
+                        <p className="text-gray-500 mt-1">{execution.locationName}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-2 -mr-2 -mt-2">{icons.x}</button>
+                </header>
+
+                <main className="p-6 overflow-y-auto space-y-6">
+                    <DetailItem label="Datum en Tijd" value={formatDateTime(execution.DateTime)} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem label="Bezoekersaantallen" value={execution.BezoekersAantallen} />
+                        <DetailItem label="PWYC Opbrengst" value={execution.PWYC ? `€${execution.PWYC}` : '€0'} />
+                    </div>
+                    <DetailItem label="Verwachte Drukte" value={execution.expectedCrowd} />
+                    <DetailItem label="Kenmerken">
+                       <div className="flex flex-wrap gap-2 text-sm">
+                           {execution.quietRoute && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Rustige Route</span>}
+                           {execution.hasNgt && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">NGT Tolk</span>}
+                       </div>
+                    </DetailItem>
+                </main>
+
+                <footer className="p-4 bg-gray-50 border-t flex justify-end items-center">
+                    <div className="flex space-x-2">
+                        {onDelete && <button onClick={() => onDelete(execution.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{icons.trash}<span>Verwijderen</span></button>}
+                        {onEdit && <button onClick={() => onEdit(execution)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{icons.edit}<span>Bewerken</span></button>}
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+function ExecutionForm({ execution, performances, locations, onClose, onSave, onSaveBulk }) {
+  const [performanceId, setPerformanceId] = useState(execution?.performanceId || '');
+  const [locationId, setLocationId] = useState(execution?.locationId || '');
+  const [datetimes, setDatetimes] = useState(
+    execution 
+      ? [{ date: new Date(execution.DateTime).toISOString().split('T')[0], time: new Date(execution.DateTime).toTimeString().slice(0, 5) }]
+      : [{ date: '', time: '' }]
+  );
+  const [extraData, setExtraData] = useState({
+      expectedCrowd: execution?.expectedCrowd || '',
+      quietRoute: execution?.quietRoute || false,
+      hasNgt: execution?.hasNgt || false,
+      BezoekersAantallen: execution?.BezoekersAantallen || 0,
+      PWYC: execution?.PWYC || 0,
+  });
+  
+  const sortedPerformances = useMemo(() => [...performances].sort((a,b) => a.Title.localeCompare(b.Title)), [performances]);
+  const sortedLocations = useMemo(() => [...locations].sort((a,b) => a.Name.localeCompare(b.Name)), [locations]);
+
+  const handleExtraDataChange = (e) => {
+      const { name, value, type, checked } = e.target;
+      setExtraData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleDatetimeChange = (index, field, value) => {
+    const newDatetimes = [...datetimes];
+    newDatetimes[index][field] = value;
+    setDatetimes(newDatetimes);
+  };
+
+  const addDatetime = () => {
+    setDatetimes([...datetimes, { date: '', time: '' }]);
+  };
+
+  const removeDatetime = (index) => {
+    const newDatetimes = datetimes.filter((_, i) => i !== index);
+    setDatetimes(newDatetimes);
+  };
+
+  const handleSubmit = (e) => { 
+      e.preventDefault();
+      
+      const baseData = {
+          performanceId,
+          locationId,
+          ...extraData,
+          BezoekersAantallen: Number(extraData.BezoekersAantallen) || 0,
+          PWYC: Number(extraData.PWYC) || 0,
+      };
+
+      if (execution) {
+        const dateTime = new Date(`${datetimes[0].date}T${datetimes[0].time}`);
+        onSave({ 
+            ...baseData,
+            DateTime: dateTime.toISOString()
+        });
+      } else {
+        const executionsToCreate = datetimes
+            .filter(dt => dt.date && dt.time)
+            .map(dt => {
+                const dateTime = new Date(`${dt.date}T${dt.time}`);
+                return {
+                    ...baseData,
+                    DateTime: dateTime.toISOString()
+                };
+            });
+        
+        if (executionsToCreate.length > 0) {
+            onSaveBulk(executionsToCreate);
+        }
+      }
+  };
+
+  return (
+     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl max-h-full overflow-y-auto">
+        <h3 className="text-2xl font-bold mb-6">{execution ? 'Uitvoering Bewerken' : 'Nieuwe Uitvoeringen'}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <select name="performanceId" value={performanceId} onChange={(e) => setPerformanceId(e.target.value)} className="w-full p-2 border rounded" required>
+            <option value="">Kies een voorstelling</option>
+            {sortedPerformances.map(p => <option key={p.id} value={p.id}>{p.Title}</option>)}
+          </select>
+          <select name="locationId" value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full p-2 border rounded" required>
+            <option value="">Kies een locatie</option>
+            {sortedLocations.map(l => <option key={l.id} value={l.id}>{l.Name}</option>)}
+          </select>
+          
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Datum & Tijd</label>
+            {datetimes.map((dt, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                    <input type="date" value={dt.date} onChange={(e) => handleDatetimeChange(index, 'date', e.target.value)} className="w-full p-2 border rounded" required />
+                    <input type="time" value={dt.time} onChange={(e) => handleDatetimeChange(index, 'time', e.target.value)} className="w-full p-2 border rounded" required />
+                    <button type="button" onClick={() => removeDatetime(index)} disabled={datetimes.length <= 1} className="text-red-500 hover:text-red-700 disabled:opacity-50 p-2">
+                        {icons.trash}
+                    </button>
+                </div>
+            ))}
+          </div>
+          
+          {!execution && (
+            <button type="button" onClick={addDatetime} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center space-x-1">
+                {icons.plus}
+                <span>Datum en tijd toevoegen</span>
+            </button>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bezoekersaantallen</label>
+                <input type="number" name="BezoekersAantallen" value={extraData.BezoekersAantallen} onChange={handleExtraDataChange} placeholder="0" className="w-full p-2 border rounded" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PWYC Opbrengst (€)</label>
+                <input type="number" name="PWYC" value={extraData.PWYC} onChange={handleExtraDataChange} placeholder="0" className="w-full p-2 border rounded" />
+            </div>
+          </div>
+
+          <input type="text" name="expectedCrowd" value={extraData.expectedCrowd} onChange={handleExtraDataChange} placeholder="Verwachte drukte" className="w-full p-2 border rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center space-x-2"><input type="checkbox" name="quietRoute" checked={extraData.quietRoute} onChange={handleExtraDataChange} /><span>Rustige Route</span></label>
+            <label className="flex items-center space-x-2"><input type="checkbox" name="hasNgt" checked={extraData.hasNgt} onChange={handleExtraDataChange} /><span>NGT</span></label>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// --- Vrijwilligers View (AANGEPAST) ---
 function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermissions }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
+  const [detailContact, setDetailContact] = useState(null);
 
-  // Filter de contacten om alleen vrijwilligers te tonen.
   const volunteers = useMemo(() => 
     contacts.filter(c => (c.Role || '').toLowerCase() === 'vrijwilliger'),
     [contacts]
   );
 
-  // Gebruik de custom hook voor sorteren en filteren.
   const { 
     filteredAndSortedItems: filteredVolunteers, 
     searchTerm, 
@@ -3583,16 +4810,16 @@ function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermission
     requestSort,
     filters,
     handleFilterChange
-  } = useSortAndFilter(volunteers, 'Name', ['Name', 'Email', 'Phone', 'pronouns', 'shirtSize']);
+  } = useSortAndFilter(volunteers, 'Name', ['Name', 'Email', 'Phone', 'functie', 'AangemeldVoor']);
 
-  // Definieer de kolommen voor de tabel.
   const ALL_COLUMNS = useMemo(() => [
     { key: 'Name', header: 'Naam', sortable: true, filterable: true },
+    { key: 'functie', header: 'Functie', sortable: true, filterable: true },
+    { key: 'AangemeldVoor', header: 'Aangemeld Voor', sortable: false, filterable: true },
     { key: 'Email', header: 'Email', sortable: true, filterable: true },
     { key: 'Phone', header: 'Telefoon', sortable: false, filterable: false },
-    { key: 'pronouns', header: 'Voornaamwoorden', sortable: true, filterable: true },
+    { key: 'viaFormulier', header: 'Via Formulier', sortable: true, filterable: true },
     { key: 'shirtSize', header: 'Shirtmaat', sortable: true, filterable: true },
-    { key: 'yearsActive', header: 'Actieve Jaren', sortable: false, filterable: false },
   ], []);
   
   const [visibleColumns, setVisibleColumns] = useState(new Set(ALL_COLUMNS.map(c => c.key)));
@@ -3607,6 +4834,7 @@ function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermission
   };
 
   const handleEdit = (contact) => {
+    setDetailContact(null);
     setEditingContact(contact);
     setIsModalOpen(true);
   };
@@ -3624,56 +4852,84 @@ function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermission
         title="Vrijwilligers"
         countText={countText}
         onAddNew={handleAddNew}
+        onExport={exportTo}
+        exportData={filteredVolunteers}
+        exportColumns={ALL_COLUMNS}
+        exportFilename="vrijwilligers"
         onSearch={setSearchTerm}
         searchTerm={searchTerm}
         hasEditPermissions={hasEditPermissions}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       >
         <ColumnSelector columns={ALL_COLUMNS} visibleColumns={visibleColumns} toggleColumn={toggleColumn} />
       </ViewHeader>
-
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
-                <SortableTh 
-                    key={col.key} 
-                    column={col} 
-                    sortConfig={sortConfig} 
-                    requestSort={requestSort}
-                    filters={filters}
-                    handleFilterChange={handleFilterChange}
-                    allItems={volunteers}
-                />
-              )}
-              {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredVolunteers.length > 0 ? filteredVolunteers.map(contact => (
-              <tr key={contact.id}>
-                {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap">{contact.Name}</td>}
-                {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap">{contact.Email}</td>}
-                {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap">{contact.Phone}</td>}
-                {visibleColumns.has('pronouns') && <td className="px-6 py-4 whitespace-nowrap">{contact.pronouns}</td>}
-                {visibleColumns.has('shirtSize') && <td className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>}
-                {visibleColumns.has('yearsActive') && <td className="px-6 py-4 whitespace-nowrap">{(contact.yearsActive || []).join(', ')}</td>}
-                {hasEditPermissions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
-                      <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
-                    </td>
+      
+      {viewMode === 'list' ? (
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {ALL_COLUMNS.map(col => visibleColumns.has(col.key) && 
+                  <SortableTh 
+                      key={col.key} 
+                      column={col} 
+                      sortConfig={sortConfig} 
+                      requestSort={requestSort}
+                      filters={filters}
+                      handleFilterChange={handleFilterChange}
+                      allItems={volunteers}
+                  />
                 )}
+                {hasEditPermissions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>}
               </tr>
-            )) : (
-              <tr><td colSpan={visibleColumns.size + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen vrijwilligers gevonden.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredVolunteers.length > 0 ? filteredVolunteers.map(contact => (
+                <tr key={contact.id}>
+                  {visibleColumns.has('Name') && <td className="px-6 py-4 whitespace-nowrap">{contact.Name}</td>}
+                  {visibleColumns.has('functie') && <td className="px-6 py-4 whitespace-nowrap">{(contact.functie || []).join(', ')}</td>}
+                  {visibleColumns.has('AangemeldVoor') && <td className="px-6 py-4 whitespace-nowrap">{(contact.AangemeldVoor || []).join(', ')}</td>}
+                  {visibleColumns.has('Email') && <td className="px-6 py-4 whitespace-nowrap">{contact.Email}</td>}
+                  {visibleColumns.has('Phone') && <td className="px-6 py-4 whitespace-nowrap">{contact.Phone}</td>}
+                  {visibleColumns.has('viaFormulier') && <td className="px-6 py-4 whitespace-nowrap">{contact.viaFormulier ? 'Ja' : 'Nee'}</td>}
+                  {visibleColumns.has('shirtSize') && <td className="px-6 py-4 whitespace-nowrap">{contact.shirtSize}</td>}
+                  {hasEditPermissions && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onClick={() => handleEdit(contact)} className="text-indigo-600 hover:text-indigo-900 mr-4">{icons.edit}</button>
+                        <button onClick={() => onDelete(contact.id)} className="text-red-600 hover:text-red-900">{icons.trash}</button>
+                      </td>
+                  )}
+                </tr>
+              )) : (
+                <tr><td colSpan={visibleColumns.size + (hasEditPermissions ? 1 : 0)} className="text-center py-4">Geen vrijwilligers gevonden.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredVolunteers.map(contact => (
+            <div key={contact.id} onClick={() => setDetailContact(contact)} className="bg-white rounded-lg shadow-md p-5 flex flex-col justify-between hover:shadow-lg transition-shadow cursor-pointer">
+                <div>
+                    <h3 className="font-bold text-lg text-gray-800 truncate">{contact.Name}</h3>
+                    <p className="text-indigo-600 text-sm capitalize truncate">{(contact.functie || []).join(', ')}</p>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p className="font-semibold">Aangemeld voor:</p>
+                      <p className="truncate">{(contact.AangemeldVoor || []).join(', ') || 'N.v.t.'}</p>
+                    </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+                    <p className="truncate flex items-center"><span className="w-4 h-4 mr-1.5">{icons.mail}</span>{contact.Email || 'Geen email'}</p>
+                    <p className="truncate flex items-center"><span className="w-4 h-4 mr-1.5">{icons.phone}</span>{contact.Phone || 'Geen tel.'}</p>
+                    <p>Aanmelding via formulier: <span className="font-semibold">{contact.viaFormulier ? 'Ja' : 'Nee'}</span></p>
+                </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isModalOpen && (
-        // ContactForm wordt verondersteld beschikbaar te zijn vanuit een ander bestand.
         <ContactForm 
           key={editingContact ? editingContact.id : 'new-volunteer'}
           contact={editingContact || { Role: 'vrijwilliger' }} 
@@ -3689,6 +4945,14 @@ function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermission
           }}
         />
       )}
+      {detailContact && (
+        <ContactDetailModal 
+            contact={detailContact}
+            onClose={() => setDetailContact(null)}
+            onEdit={hasEditPermissions ? handleEdit : null}
+            onDelete={hasEditPermissions ? () => onDelete(detailContact.id) : null}
+        />
+      )}
     </div>
   );
 }
@@ -3697,7 +4961,7 @@ function VolunteersView({ contacts, onAdd, onUpdate, onDelete, hasEditPermission
 function InfoView({ infoItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const { filteredAndSortedItems, searchTerm, setSearchTerm, sortConfig, requestSort } = useSortAndFilter(infoItems, 'Titel', ['Titel', 'Inhoud']);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(infoItems, 'NameNl', ['NameNl', 'NameEng']);
     const countText = `Toont ${filteredAndSortedItems.length} van ${infoItems.length} info items`;
 
     const handleEdit = (item) => {
@@ -3718,8 +4982,8 @@ function InfoView({ infoItems, onAdd, onUpdate, onDelete, hasEditPermissions }) 
                     {filteredAndSortedItems.map(item => (
                         <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
-                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.NameNl}</h3>
+                                <a href={item.MeerInfoNl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline truncate max-w-2xl block">{item.MeerInfoNl}</a>
                             </div>
                             {hasEditPermissions && (
                                 <div className="flex space-x-2">
@@ -3743,7 +5007,13 @@ function InfoView({ infoItems, onAdd, onUpdate, onDelete, hasEditPermissions }) 
 }
 
 function InfoForm({ item, onClose, onSave }) {
-    const [formData, setFormData] = useState({ Titel: item?.Titel || '', Inhoud: item?.Inhoud || '' });
+    const [formData, setFormData] = useState({
+        NameNl: item?.NameNl || '',
+        NameEng: item?.NameEng || '',
+        MeerInfoNl: item?.MeerInfoNl || '',
+        MeerInfoEng: item?.MeerInfoEng || '',
+        MeerInfoAfbeelding: item?.MeerInfoAfbeelding || '',
+    });
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
 
@@ -3752,8 +5022,11 @@ function InfoForm({ item, onClose, onSave }) {
             <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
                 <h3 className="text-2xl font-bold mb-6">{item ? 'Info Item Bewerken' : 'Nieuw Info Item'}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <input type="text" name="Titel" value={formData.Titel} onChange={handleChange} placeholder="Titel" className="w-full p-2 border rounded" required />
-                    <textarea name="Inhoud" value={formData.Inhoud} onChange={handleChange} placeholder="Inhoud" className="w-full p-2 border rounded h-40" required></textarea>
+                    <input type="text" name="NameNl" value={formData.NameNl} onChange={handleChange} placeholder="Titel (NL)" className="w-full p-2 border rounded" />
+                    <input type="text" name="NameEng" value={formData.NameEng} onChange={handleChange} placeholder="Titel (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="MeerInfoNl" value={formData.MeerInfoNl} onChange={handleChange} placeholder="URL (NL)" className="w-full p-2 border rounded" />
+                    <input type="url" name="MeerInfoEng" value={formData.MeerInfoEng} onChange={handleChange} placeholder="URL (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="MeerInfoAfbeelding" value={formData.MeerInfoAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
                     <div className="flex justify-end space-x-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
                         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
@@ -3763,12 +5036,10 @@ function InfoForm({ item, onClose, onSave }) {
         </div>
     );
 }
-
-// --- Nieuws View ---
 function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(nieuwsItems, 'Titel', ['Titel', 'Inhoud']);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(nieuwsItems, 'NieuwsTitelNl', ['NieuwsTitelNl', 'NieuwsTitelEng']);
     const countText = `Toont ${filteredAndSortedItems.length} van ${nieuwsItems.length} nieuws items`;
 
     const handleEdit = (item) => {
@@ -3789,8 +5060,8 @@ function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions
                     {filteredAndSortedItems.map(item => (
                         <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
-                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.NieuwsTitelNl}</h3>
+                                <a href={item.NieuwsUrlNl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline truncate max-w-2xl block">{item.NieuwsUrlNl}</a>
                             </div>
                             {hasEditPermissions && (
                                 <div className="flex space-x-2">
@@ -3803,7 +5074,7 @@ function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions
                 </ul>
             </div>
             {isModalOpen && (
-                <InfoForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
+                <NieuwsForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
                     if (editingItem) onUpdate(editingItem.id, data);
                     else onAdd(data);
                     setIsModalOpen(false);
@@ -3813,11 +5084,41 @@ function NieuwsView({ nieuwsItems, onAdd, onUpdate, onDelete, hasEditPermissions
     );
 }
 
-// --- Toegankelijkheid View ---
+function NieuwsForm({ item, onClose, onSave }) {
+    const [formData, setFormData] = useState({
+        NieuwsTitelNl: item?.NieuwsTitelNl || '',
+        NieuwsTitelEng: item?.NieuwsTitelEng || '',
+        NieuwsUrlNl: item?.NieuwsUrlNl || '',
+        NieuwsUrlEng: item?.NieuwsUrlEng || '',
+        NieuwsAfbeelding: item?.NieuwsAfbeelding || '',
+    });
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+                <h3 className="text-2xl font-bold mb-6">{item ? 'Nieuws Item Bewerken' : 'Nieuw Nieuws Item'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" name="NieuwsTitelNl" value={formData.NieuwsTitelNl} onChange={handleChange} placeholder="Titel (NL)" className="w-full p-2 border rounded" />
+                    <input type="text" name="NieuwsTitelEng" value={formData.NieuwsTitelEng} onChange={handleChange} placeholder="Titel (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="NieuwsUrlNl" value={formData.NieuwsUrlNl} onChange={handleChange} placeholder="URL (NL)" className="w-full p-2 border rounded" />
+                    <input type="url" name="NieuwsUrlEng" value={formData.NieuwsUrlEng} onChange={handleChange} placeholder="URL (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="NieuwsAfbeelding" value={formData.NieuwsAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
+                    <div className="flex justify-end space-x-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete, hasEditPermissions }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(toegankelijkheidItems, 'Titel', ['Titel', 'Inhoud']);
+    const { filteredAndSortedItems, searchTerm, setSearchTerm } = useSortAndFilter(toegankelijkheidItems, 'ToegankelijkheidTitleNl', ['ToegankelijkheidTitleNl', 'ToegankelijkheidTitleEng']);
     const countText = `Toont ${filteredAndSortedItems.length} van ${toegankelijkheidItems.length} items`;
 
     const handleEdit = (item) => {
@@ -3838,8 +5139,8 @@ function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete
                     {filteredAndSortedItems.map(item => (
                         <li key={item.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-800">{item.Titel}</h3>
-                                <p className="text-gray-600 mt-1 truncate max-w-2xl">{item.Inhoud}</p>
+                                <h3 className="text-lg font-semibold text-gray-800">{item.ToegankelijkheidTitleNl}</h3>
+                                <a href={item.ToegankelijkheidUrlNl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline truncate max-w-2xl block">{item.ToegankelijkheidUrlNl}</a>
                             </div>
                             {hasEditPermissions && (
                                 <div className="flex space-x-2">
@@ -3852,7 +5153,7 @@ function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete
                 </ul>
             </div>
             {isModalOpen && (
-                <InfoForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
+                <ToegankelijkheidForm item={editingItem} onClose={() => setIsModalOpen(false)} onSave={(data) => {
                     if (editingItem) onUpdate(editingItem.id, data);
                     else onAdd(data);
                     setIsModalOpen(false);
@@ -3862,26 +5163,50 @@ function ToegankelijkheidView({ toegankelijkheidItems, onAdd, onUpdate, onDelete
     );
 }
 
-// --- Schedule View ---
-// Dit component rendert het blokkenschema voor een geselecteerd evenement.
+function ToegankelijkheidForm({ item, onClose, onSave }) {
+    const [formData, setFormData] = useState({
+        ToegankelijkheidTitleNl: item?.ToegankelijkheidTitleNl || '',
+        ToegankelijkheidTitleEng: item?.ToegankelijkheidTitleEng || '',
+        ToegankelijkheidUrlNl: item?.ToegankelijkheidUrlNl || '',
+        ToegankelijkheidUrlEng: item?.ToegankelijkheidUrlEng || '',
+        ToegankelijkheidAfbeelding: item?.ToegankelijkheidAfbeelding || '',
+    });
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 w-full max-w-lg shadow-xl">
+                <h3 className="text-2xl font-bold mb-6">{item ? 'Toegankelijkheid Item Bewerken' : 'Nieuw Toegankelijkheid Item'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" name="ToegankelijkheidTitleNl" value={formData.ToegankelijkheidTitleNl} onChange={handleChange} placeholder="Titel (NL)" className="w-full p-2 border rounded" />
+                    <input type="text" name="ToegankelijkheidTitleEng" value={formData.ToegankelijkheidTitleEng} onChange={handleChange} placeholder="Titel (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="ToegankelijkheidUrlNl" value={formData.ToegankelijkheidUrlNl} onChange={handleChange} placeholder="URL (NL)" className="w-full p-2 border rounded" />
+                    <input type="url" name="ToegankelijkheidUrlEng" value={formData.ToegankelijkheidUrlEng} onChange={handleChange} placeholder="URL (EN)" className="w-full p-2 border rounded" />
+                    <input type="url" name="ToegankelijkheidAfbeelding" value={formData.ToegankelijkheidAfbeelding} onChange={handleChange} placeholder="Afbeelding URL" className="w-full p-2 border rounded" />
+                    <div className="flex justify-end space-x-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
 function ScheduleView({ events, performances, executions, locations, companies, onQuickView }) {
-    // State voor het bijhouden van het geselecteerde evenement ID.
     const [selectedEventId, setSelectedEventId] = useState(events.length > 0 ? events[0].id : '');
     
-    // Sorteer de evenementen alfabetisch voor de dropdown.
     const sortedEvents = useMemo(() => [...events].sort((a,b) => a.Name.localeCompare(b.Name)), [events]);
 
-    // Memoized berekening van de schemagegevens op basis van de selecties.
     const scheduleData = useMemo(() => {
         if (!selectedEventId) return [];
         
         const event = events.find(e => e.id === selectedEventId);
         if (!event || !event.executionIds) return [];
 
-        // 1. Filter en verrijk de uitvoeringen die bij het geselecteerde evenement horen.
         const eventExecutions = (event.executionIds || [])
             .map(execId => executions.find(e => e.id === execId))
-            .filter(Boolean) // Verwijder null-waarden als een uitvoering niet wordt gevonden.
+            .filter(Boolean)
             .map(e => {
                 const performance = performances.find(p => p.id === e.performanceId);
                 const company = performance ? companies.find(c => c.id === performance.companyId) : null;
@@ -3893,9 +5218,8 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                     dateTime: new Date(e.DateTime)
                 }
             })
-            .filter(e => e.performance && e.location && e.company); // Zorg ervoor dat alle gekoppelde data bestaat.
+            .filter(e => e.performance && e.location && e.company);
 
-        // 2. Groepeer de uitvoeringen per dag.
         const executionsByDate = eventExecutions.reduce((acc, exec) => {
             const dateKey = exec.dateTime.toISOString().split('T')[0];
             if (!acc[dateKey]) acc[dateKey] = [];
@@ -3903,19 +5227,17 @@ function ScheduleView({ events, performances, executions, locations, companies, 
             return acc;
         }, {});
 
-        // 3. Bouw de datastructuur op voor elke dag.
         const dailySchedules = Object.keys(executionsByDate).map(dateKey => {
             const dayExecutions = executionsByDate[dateKey];
             if (dayExecutions.length === 0) return null;
 
-            // Bepaal de start- en eindtijden voor de tijdvakken van de dag.
             const times = dayExecutions.map(e => e.dateTime.getTime());
             const minDateTime = new Date(Math.min(...times));
             const maxDateTime = new Date(Math.max(...times));
 
             const timeSlots = [];
             let currentTime = new Date(minDateTime);
-            currentTime.setMinutes(Math.floor(currentTime.getMinutes() / 30) * 30, 0, 0); // Rond af naar het dichtstbijzijnde halfuur.
+            currentTime.setMinutes(Math.floor(currentTime.getMinutes() / 30) * 30, 0, 0);
 
             let endTime = new Date(maxDateTime);
             endTime.setMinutes(endTime.getMinutes() + 30);
@@ -3926,7 +5248,6 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                 currentTime.setMinutes(currentTime.getMinutes() + 30);
             }
 
-            // Haal de unieke locaties voor de dag op en sorteer ze.
             const dayLocations = Array.from(new Set(dayExecutions.map(e => e.locationId)))
                 .map(locationId => {
                     const location = locations.find(l => l.id === locationId);
@@ -3942,18 +5263,15 @@ function ScheduleView({ events, performances, executions, locations, companies, 
             };
         }).filter(Boolean);
 
-        // Sorteer de dagen chronologisch.
         return dailySchedules.sort((a, b) => a.date - b.date);
 
     }, [selectedEventId, performances, executions, locations, events, companies]);
 
-    // Berekent de startpositie en de breedte (span) van een uitvoering in de grid.
     const getExecutionPosition = (execution, timeSlots) => {
         const startTime = execution.dateTime;
-        const durationMinutes = 30; // Aanname dat alle voorstellingen 30 minuten duren.
+        const durationMinutes = 30;
         const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
-        // Vind het start-tijdvak.
         let startSlotIndex = -1;
         for (let i = 0; i < timeSlots.length; i++) {
             const slotStart = timeSlots[i];
@@ -3965,7 +5283,6 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         }
         if (startSlotIndex === -1) return { startSlotIndex: 0, span: 1 };
 
-        // Vind het eind-tijdvak om de span te bepalen.
         let endSlotIndex = startSlotIndex;
         for (let i = startSlotIndex; i < timeSlots.length; i++) {
             const slotEnd = new Date(timeSlots[i].getTime() + 30 * 60000);
@@ -3981,7 +5298,6 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         return { startSlotIndex, span };
     };
     
-    // Genereert een CSV-bestand van het huidige schema.
     const handleExport = () => {
         if (!selectedEventId || scheduleData.length === 0) {
             console.warn("Geen data om te exporteren.");
@@ -3991,7 +5307,6 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         const event = events.find(e => e.id === selectedEventId);
         const eventName = event ? event.Name.replace(/\s/g, '_') : 'schema';
 
-        // Maak de data plat voor CSV-export.
         const flattenedData = [];
         scheduleData.forEach(day => {
             const dateString = day.date.toLocaleDateString('nl-NL', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -4009,7 +5324,7 @@ function ScheduleView({ events, performances, executions, locations, companies, 
         });
 
         if (flattenedData.length > 0) {
-            exportToCsv(`blokkenschema_${eventName}.csv`, flattenedData);
+            exportTo(`blokkenschema_${eventName}.csv`, flattenedData);
         }
     };
 
@@ -4042,9 +5357,7 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                             </h3>
                             <div className="bg-white rounded-lg shadow-md overflow-x-auto">
                                 <div className="grid" style={{ gridTemplateColumns: `150px 1fr` }}>
-                                    {/* Header voor locaties */}
                                     <div className="sticky left-0 bg-gray-100 p-2 font-semibold z-20 border-b border-r border-gray-300">Locatie</div>
-                                    {/* Headers voor tijdvakken */}
                                     <div className="grid" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
                                         {day.timeSlots.map(time => (
                                             <div key={time.toISOString()} className="bg-gray-50 p-2 text-center text-sm font-semibold border-b border-l border-gray-200">
@@ -4053,16 +5366,13 @@ function ScheduleView({ events, performances, executions, locations, companies, 
                                         ))}
                                     </div>
 
-                                    {/* Rijen voor elke locatie */}
                                     {day.locations.map(location => (
                                         <React.Fragment key={location.id}>
                                             <div className="sticky left-0 bg-white p-2 font-semibold z-10 border-t border-r border-gray-300 flex items-center">{location.Name}</div>
                                             <div className="relative grid border-t border-gray-200" style={{ gridTemplateColumns: `repeat(${day.timeSlots.length}, minmax(100px, 1fr))` }}>
-                                                {/* Verticale lijnen voor de grid */}
                                                 {day.timeSlots.map((_, index) => (
                                                     <div key={index} className="border-l border-gray-200 h-full"></div>
                                                 ))}
-                                                {/* Render de uitvoeringen op de juiste posities */}
                                                 {location.executions.map(exec => {
                                                     const { startSlotIndex, span } = getExecutionPosition(exec, day.timeSlots);
                                                     return (
@@ -4098,7 +5408,6 @@ function ScheduleView({ events, performances, executions, locations, companies, 
     );
 }
 
-// --- Contract Templates ---
 const contractTemplateNL = `Het Café Theater Festival (CTF), rechtsgeldig vertegenwoordigd door Christiaan Uytdehaage, en [company_name], hierna te noemen ‘gezelschap’, spreken het volgende met elkaar af:
 
 1. Het gezelschap maakt een voorstelling die speelt op [event_names]. De voorstelling speelt in totaal [execution_count] keer verspreid over [execution_day_count] dagen.
@@ -4155,13 +5464,11 @@ Date: [current_date]                                                Date:
 Signature:                                                          Signature:
 `;
 
-// Dit component genereert een contract op basis van de geselecteerde voorstelling.
 function ContractGenerator({ contacts, companies, performances, events, executions, showNotification }) {
   const [selectedPerformanceId, setSelectedPerformanceId] = useState('');
   const [contractText, setContractText] = useState('');
   const [language, setLanguage] = useState('nl');
 
-  // Laadt de jsPDF-bibliotheek wanneer het component voor het eerst wordt gerenderd.
   useEffect(() => {
     if (!document.getElementById('jspdf-script')) {
       const script = document.createElement('script');
@@ -4172,7 +5479,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     }
   }, []);
   
-  // Genereert de contracttekst op basis van de geselecteerde data.
   const generateContract = () => {
     const performance = performances.find(p => p.id === selectedPerformanceId);
     if (!performance) {
@@ -4185,7 +5491,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         return;
     }
 
-    // Verzamel alle relevante data.
     const performanceExecutions = executions.filter(exec => exec.performanceId === performance.id);
     const executionIds = new Set(performanceExecutions.map(e => e.id));
     const uniqueExecutionDays = new Set(performanceExecutions.map(exec => new Date(exec.DateTime).toISOString().split('T')[0]));
@@ -4193,7 +5498,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     const relevantEvents = events.filter(event => (event.executionIds || []).some(execId => executionIds.has(execId)));
     const eventNames = relevantEvents.map(e => e.Name);
     
-    // Formatteer de lijst met evenementnamen.
     let eventNameString;
     if (language === 'nl') {
         eventNameString = eventNames.join(', ');
@@ -4214,7 +5518,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     const totalGageFromEvents = relevantEvents.reduce((sum, event) => sum + (parseFloat(event.gage) || 0), 0);
     const totalCalculatedGage = playerCount * totalGageFromEvents;
 
-    // Verzamel de namen van de artiesten.
     const companyPlayerIds = new Set(company.playerIds || []);
     const allMemberIds = new Set([...companyPlayerIds, company.contactPersonId].filter(Boolean));
     const companyArtists = contacts.filter(c => allMemberIds.has(c.id));
@@ -4224,7 +5527,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
 
     const formattedDate = new Date().toLocaleDateString('nl-NL');
 
-    // Kies de juiste template en vervang de placeholders.
     let template = language === 'nl' ? contractTemplateNL : contractTemplateEN;
     const replacements = {
         '[company_name]': company.Name,
@@ -4243,7 +5545,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     setContractText(template.trim());
   };
   
-  // Kopieert de gegenereerde tekst naar het klembord.
   const copyToClipboard = () => {
     navigator.clipboard.writeText(contractText).then(() => {
         showNotification('Contract gekopieerd naar klembord!');
@@ -4252,7 +5553,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     });
   };
 
-  // Exporteert het contract als een PDF-bestand.
   const handleExportPDF = async () => {
     if (!contractText || !selectedPerformanceId) {
         showNotification('Genereer eerst een contract om te exporteren.', 'error');
@@ -4270,7 +5570,6 @@ function ContractGenerator({ contacts, companies, performances, events, executio
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt' });
 
-    // Functie om de PDF te genereren en op te slaan, met of zonder logo.
     const addTextAndSave = (logoData = null) => {
         const pageHeight = doc.internal.pageSize.height;
         const pageWidth = doc.internal.pageSize.width;
@@ -4295,10 +5594,8 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         showNotification('PDF succesvol geëxporteerd!');
     };
     
-    // Probeert het CTF-logo te laden om aan de PDF toe te voegen.
     try {
         const logoUrl = 'https://cafetheaterfestival.nl/wp-content/uploads/2025/06/Logo_Web_Trans_Zwart.png';
-        // Gebruik een CORS-proxy om het laden van de afbeelding mogelijk te maken.
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${logoUrl}`;
         
         const response = await fetch(proxyUrl);
@@ -4310,18 +5607,18 @@ function ContractGenerator({ contacts, companies, performances, events, executio
         reader.onloadend = () => addTextAndSave(reader.result);
         reader.onerror = () => {
              console.error("FileReader error on logo.");
-             addTextAndSave(); // Ga verder zonder logo bij een fout.
+             addTextAndSave();
         }
     } catch (error) {
         console.error("Kon logo niet laden voor PDF, ga verder zonder.", error);
         showNotification('Logo kon niet geladen worden, PDF wordt zonder logo gemaakt.', 'warning');
-        addTextAndSave(); // Ga verder zonder logo bij een fout.
+        addTextAndSave();
     }
   };
 
   return (
     <div>
-      <ViewHeader title="Contract Generator" />
+      <ViewHeader title="Contract Generator (Gezelschappen)" />
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -4367,4 +5664,282 @@ function ContractGenerator({ contacts, companies, performances, events, executio
   );
 }
 
+const cafeContractTemplateNL = `OVEREENKOMST DEELNAME AAN HET CAFÉ THEATER FESTIVAL 2025
+Stichting Cafétheaterfestival, hierna te noemen: “Café Theater Festival”
+en
+[location_name] hierna te noemen: “Café”
+zijn het volgende overeengekomen:
+
+-Het Café geeft hierbij aan zich open te stellen voor het [event_names], dit festival vindt plaats op [execution_dates].
+-Het Café stelt zich open voor een try-out van de voorstelling. Na de voorstelling leidt de organisatie van het Café Theater Festival een kort nagesprek met het aanwezige publiek.
+-De groep die tijdens het Café Theater Festival in uw Café zal spelen is [company_names]. De groep bestaat uit [player_count] personen. Contactpersoon [company_contact_person_names] is te bereiken via [company_contact_person_emails] of [company_contact_person_phones].
+-De tijden van de voorstellingen in het Café zijn als volgt:
+[execution_schedule]
+-Mocht de groep door redenen van overmacht niet kunnen spelen dan doet de organisatie van het Café Theater Festival haar uiterste best voor passende vervanging te zorgen.
+-Tijdens het festival zal er een vrijwilliger aanwezig zijn die de voorstelling en de spelers begeleidt en het publiek te woord staat.
+-Conform de afspraak zal het Café de leden van het gezelschap en de vrijwilliger één consumptie per persoon per voorstelling aanbieden. Dit geldt ook voor de Try-Out.
+-Indien het Café eten serveert vragen wij het Café, wanneer gewenst door de artiest(en), de artiest(en) en vrijwilliger van een avondmaaltijd te voorzien. Hiervoor kan het Café direct met de artiest(en) €5 incl. BTW per persoon per maaltijd afrekenen, met uitzondering van de vrijwilliger. Deze eigen bijdrage door de artiest(en) is gelijk aan de bijdrage welke wij vragenwanneer een café geen eten serveert.
+-Andere programmering op de locatie zal ruim om de voorstellingstijden heen gepland worden, zodat de voorstelling hiervan geen hinder ondervindt.
+-Medewerkers van het Café zullen gedurende de voorstellingen zo min mogelijk geluidsoverlast veroorzaken, bijvoorbeeld door tijdens de voorstelling geen melkschuim voor cappuccino’s te maken.
+-Het Café is gedurende het festival verantwoordelijk voor de veiligheid van alle aanwezigen in het pand. Medewerkers van het Café controleren de drukte en houden zich aan de geldende veiligheidseisen die door de brandweer zijn opgelegd aan het Café.
+-Voor deelname aan het festival brengt het Café Theater een bedrag van €[location_contribution],- exclusief btw in rekening bij het Café.
+-Indien er schade ontstaat aan de opstal, de inrichting of het meubilair van de locatie, aantoonbaar veroorzaakt door het CTF, kan deze schade verhaald worden op het CTF, meteen maximum van €500. Hierbij dient het Café een bewijsstuk van de reparatie of vervangende aanschaf overlegd te worden aan het CTF.
+
+Aldus (in tweevoud opgemaakt) overeengekomen en ondertekend te Utrecht,
+
+Stichting Cafétheaterfestival
+Vertegenwoordigd door: Christiaan Uytdehaage
+Datum: [current_date]
+Handtekening:
+
+[location_name]
+Vertegenwoordigd door: 
+Datum:
+Handtekening:
+`;
+
+const cafeContractTemplateEN = `AGREEMENT FOR PARTICIPATION IN THE CAFÉ THEATER FESTIVAL 2025
+Stichting Cafétheaterfestival, hereinafter referred to as: “Café Theater Festival”
+and
+[location_name] hereinafter referred to as: “Café”
+have agreed as follows:
+
+-The Café hereby declares its willingness to host [event_names], this festival takes place on [execution_dates].
+-The Café is open to a try-out of the performance. After the performance, the Café Theater Festival organization will lead a short post-show talk with the audience present.
+-The group that will perform in your Café during the Café Theater Festival is [company_names]. The group consists of [player_count] people. Contact person [company_contact_person_names] can be reached via [company_contact_person_emails] or [company_contact_person_phones].
+-The performance times in the Café are as follows:
+[execution_schedule]
+-Should the group be unable to perform due to force majeure, the Café Theater Festival organization will do its utmost to arrange for a suitable replacement.
+-During the festival, a volunteer will be present to supervise the performance and the performers and to assist the audience.
+-As agreed, the Café will offer the members of the company and the volunteer one consumption per person per performance. This also applies to the Try-Out.
+-If the Café serves food, we ask the Café, if desired by the artist(s), to provide the artist(s) and volunteer with an evening meal. For this, the Café can charge the artist(s) directly €5 incl. VAT per person per meal, with the exception of the volunteer. This personal contribution by the artist(s) is equal to the contribution we ask when a café does not serve food.
+-Other programming at the location will be scheduled well around the performance times, so that the performance is not hindered.
+-Café staff will cause as little noise as possible during the performances, for example by not making milk foam for cappuccinos during the performance.
+-During the festival, the Café is responsible for the safety of all persons present on the premises. Café staff will monitor the crowd and adhere to the applicable safety requirements imposed on the Café by the fire department.
+-For participation in the festival, the Café Theater will charge the Café an amount of €[location_contribution],- excluding VAT.
+-If damage occurs to the building, the interior, or the furniture of the location, demonstrably caused by the CTF, this damage can be recovered from the CTF, with a maximum of €500. The Café must provide proof of the repair or replacement purchase to the CTF.
+
+Thus agreed and signed in duplicate in Utrecht,
+
+Stichting Cafétheaterfestival
+Represented by: Christiaan Uytdehaage
+Date: [current_date]
+Signature:
+
+[location_name]
+Represented by: 
+Date:
+Signature:
+`;
+
+function CafeContractGenerator({ contacts, companies, performances, events, executions, locations, showNotification }) {
+  const [selectedLocationId, setSelectedLocationId] = useState('');
+  const [contractText, setContractText] = useState('');
+  const [language, setLanguage] = useState('nl');
+
+  useEffect(() => {
+    if (!document.getElementById('jspdf-script')) {
+      const script = document.createElement('script');
+      script.id = 'jspdf-script';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+  
+  const generateContract = () => {
+    const location = locations.find(l => l.id === selectedLocationId);
+    if (!location) {
+      showNotification("Selecteer een locatie.", "error");
+      return;
+    }
+
+    const locationExecutions = executions.filter(exec => exec.locationId === location.id);
+    if (locationExecutions.length === 0) {
+        showNotification("Deze locatie heeft geen gekoppelde uitvoeringen.", "warning");
+        return;
+    }
+    
+    const performanceIds = new Set(locationExecutions.map(e => e.performanceId));
+    const relevantPerformances = performances.filter(p => performanceIds.has(p.id));
+    
+    const companyIds = new Set(relevantPerformances.map(p => p.companyId));
+    const relevantCompanies = companies.filter(c => companyIds.has(c.id));
+    
+    const executionIds = new Set(locationExecutions.map(e => e.id));
+    const relevantEvents = events.filter(event => (event.executionIds || []).some(execId => executionIds.has(execId)));
+    
+    const eventNames = relevantEvents.map(e => e.Name);
+    let eventNameString;
+    if (language === 'nl') {
+        eventNameString = eventNames.length > 1 ? eventNames.slice(0, -1).join(', ') + ' en ' + eventNames.slice(-1) : eventNames[0];
+    } else {
+        eventNameString = eventNames.length > 1 ? eventNames.slice(0, -1).join(', ') + ' and ' + eventNames.slice(-1) : eventNames[0];
+    }
+
+    const uniqueExecutionDates = Array.from(new Set(locationExecutions.map(exec => exec.DateTime.split('T')[0])))
+        .sort((a,b) => new Date(a) - new Date(b))
+        .map(dateStr => new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }));
+    
+    const companyNames = relevantCompanies.map(c => c.Name).join(', ');
+    const playerCount = relevantCompanies.reduce((sum, c) => sum + (c.playerIds?.length || 0), 0);
+    
+    const contactPersons = relevantCompanies.map(c => contacts.find(p => p.id === c.contactPersonId)).filter(Boolean);
+    const contactPersonNames = contactPersons.map(p => p.Name).join(', ');
+    const contactPersonEmails = contactPersons.map(p => p.Email).join(', ');
+    const contactPersonPhones = contactPersons.map(p => p.Phone).join(', ');
+
+    const executionsByDate = locationExecutions.reduce((acc, exec) => {
+        const dateKey = exec.DateTime.split('T')[0];
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(new Date(exec.DateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }));
+        return acc;
+    }, {});
+    
+    const executionSchedule = Object.entries(executionsByDate)
+        .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB))
+        .map(([date, times]) => {
+            const formattedDate = new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+            return `${formattedDate}: ${times.sort().join(', ')}`;
+        }).join('\n');
+
+    const formattedDate = new Date().toLocaleDateString('nl-NL');
+
+    let template = language === 'nl' ? cafeContractTemplateNL : cafeContractTemplateEN;
+    const replacements = {
+        '[location_name]': location.Name,
+        '[event_names]': eventNameString || (language === 'nl' ? 'N.v.t.' : 'N/A'),
+        '[execution_dates]': uniqueExecutionDates.join(', '),
+        '[company_names]': companyNames || (language === 'nl' ? 'Nog niet bekend' : 'Not yet known'),
+        '[player_count]': playerCount,
+        '[company_contact_person_names]': contactPersonNames || (language === 'nl' ? 'N.v.t.' : 'N/A'),
+        '[company_contact_person_emails]': contactPersonEmails || (language === 'nl' ? 'N.v.t.' : 'N/A'),
+        '[company_contact_person_phones]': contactPersonPhones || (language === 'nl' ? 'N.v.t.' : 'N/A'),
+        '[execution_schedule]': executionSchedule || (language === 'nl' ? 'Nog niet gepland' : 'Not yet scheduled'),
+        '[location_contribution]': location.Bijdrage || 0,
+        '[current_date]': formattedDate,
+    };
+
+    for (const [placeholder, value] of Object.entries(replacements)) {
+        template = template.replace(new RegExp(escapeRegExp(placeholder), 'g'), value);
+    }
+
+    setContractText(template.trim());
+  };
+  
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(contractText).then(() => {
+        showNotification('Contract gekopieerd naar klembord!');
+    }, () => {
+        showNotification('Kon contract niet kopiëren.', 'error');
+    });
+  };
+
+  const handleExportPDF = async () => {
+    if (!contractText || !selectedLocationId) {
+        showNotification('Genereer eerst een contract om te exporteren.', 'error');
+        return;
+    }
+    if (!window.jspdf) {
+        showNotification('PDF bibliotheek is aan het laden, probeer het zo opnieuw.', 'warning');
+        return;
+    }
+
+    const location = locations.find(l => l.id === selectedLocationId);
+    const fileName = `Contract-Cafe-${location.Name.replace(/\s/g, '_')}.pdf`;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt' });
+
+    const addTextAndSave = (logoData = null) => {
+        const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 40;
+        let yPos = margin;
+
+        if (logoData) {
+            const imgProps = doc.getImageProperties(logoData);
+            const logoWidth = 100;
+            const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
+            doc.addImage(logoData, 'PNG', pageWidth - logoWidth - margin, margin, logoWidth, logoHeight);
+            yPos += logoHeight + 20;
+        }
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        
+        const lines = doc.splitTextToSize(contractText, pageWidth - (margin * 2));
+        doc.text(lines, margin, yPos);
+        
+        doc.save(fileName);
+        showNotification('PDF succesvol geëxporteerd!');
+    };
+    
+    try {
+        const logoUrl = 'https://cafetheaterfestival.nl/wp-content/uploads/2025/06/Logo_Web_Trans_Zwart.png';
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${logoUrl}`;
+        
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('Network response was not ok.');
+
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => addTextAndSave(reader.result);
+        reader.onerror = () => {
+             addTextAndSave();
+        }
+    } catch (error) {
+        console.error("Kon logo niet laden voor PDF, ga verder zonder.", error);
+        showNotification('Logo kon niet geladen worden, PDF wordt zonder logo gemaakt.', 'warning');
+        addTextAndSave();
+    }
+  };
+
+  return (
+    <div>
+      <ViewHeader title="Contract Generator (Cafés)" />
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kies Locatie</label>
+                <select value={selectedLocationId} onChange={e => setSelectedLocationId(e.target.value)} className="w-full p-2 border rounded-md shadow-sm">
+                  <option value="">Selecteer een locatie...</option>
+                  {locations.sort((a,b) => a.Name.localeCompare(b.Name)).map(l => (
+                    <option key={l.id} value={l.id}>{l.Name}</option>
+                  ))}
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kies Taal</label>
+                <div className="flex space-x-2">
+                    <button onClick={() => setLanguage('nl')} className={`w-full p-2 rounded-md ${language === 'nl' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>Nederlands</button>
+                    <button onClick={() => setLanguage('en')} className={`w-full p-2 rounded-md ${language === 'en' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}>English</button>
+                </div>
+            </div>
+        </div>
+        <button onClick={generateContract} className="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 mb-6 shadow-md">
+          Genereer Contract
+        </button>
+
+        {contractText && (
+          <div>
+            <h3 className="text-xl font-semibold mb-2">Conceptcontract</h3>
+            <textarea readOnly value={contractText} className="w-full h-96 p-4 border rounded bg-gray-50 font-mono text-sm leading-relaxed"></textarea>
+            <div className="mt-4 flex space-x-2">
+              <button onClick={copyToClipboard} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-md flex items-center space-x-2">
+                {icons.copy}
+                <span>Kopieer naar Klembord</span>
+              </button>
+               <button onClick={handleExportPDF} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md flex items-center space-x-2">
+                  {icons.pdf}
+                  <span>Exporteer als PDF</span>
+               </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 export default App;
